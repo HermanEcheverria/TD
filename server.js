@@ -65,41 +65,45 @@ function getRandomPerks() {
 function spawnZombiesForPlayer(player) {
   if (!player.alive) return;
   
-  const count = 3 + wave * 2;
+  // Balanced zombie count per wave
+  const count = wave === 1 ? 3 : (wave === 2 ? 4 : Math.min(15, Math.floor(3 + wave * 1.5)));
+  
   for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const distance = player.visionRange + 100 + Math.random() * 150;
+    // Distribute angles evenly around tower with slight randomness
+    const angle = ((i * (Math.PI * 2 / count)) + (Math.random() * 0.4 - 0.2));
+    const distance = player.visionRange + 180 + Math.random() * 150;
     const spawnX = Math.max(50, Math.min(MAP_SIZE - 50, player.x + Math.cos(angle) * distance));
     const spawnY = Math.max(50, Math.min(MAP_SIZE - 50, player.y + Math.sin(angle) * distance));
     
-    // Zombie variants based on random roll
+    // Zombie variants based on wave & random roll
     const typeRoll = Math.random();
     let type = 'normal';
-    let hp = 40 + wave * 15;
-    let speed = 65 + Math.random() * 10;
-    let damage = 10;
+    let hp = 25 + wave * 12; // Wave 1 HP = 37 (Player damage = 40 => 1-shot kill!)
+    let speed = 45 + Math.random() * 8; // Slower speed so player can shoot them down easily
+    let damage = 6;
     let rewardXp = 25;
     let rewardCoins = 10;
     let radius = 14;
     let color = '#7BED9F';
 
-    if (typeRoll > 0.75) {
+    // Fast and Tank zombies only spawn on wave >= 2 or higher
+    if (wave >= 2 && typeRoll > 0.70 && typeRoll <= 0.90) {
       type = 'fast';
-      hp = 25 + wave * 10;
-      speed = 110 + Math.random() * 15;
-      damage = 6;
+      hp = 20 + wave * 8;
+      speed = 85 + Math.random() * 10;
+      damage = 4;
       rewardXp = 20;
       rewardCoins = 8;
       radius = 11;
       color = '#ECCC68';
-    } else if (typeRoll > 0.90) {
+    } else if (wave >= 2 && typeRoll > 0.90) {
       type = 'tank';
-      hp = 90 + wave * 35;
-      speed = 40 + Math.random() * 5;
-      damage = 22;
-      rewardXp = 60;
-      rewardCoins = 25;
-      radius = 20;
+      hp = 70 + wave * 25;
+      speed = 35 + Math.random() * 5;
+      damage = 15;
+      rewardXp = 50;
+      rewardCoins = 20;
+      radius = 18;
       color = '#FF6B81';
     }
 
@@ -131,24 +135,24 @@ io.on('connection', (socket) => {
   const spawn = getRandomSpawnPosition(activePlayerCount);
   const color = COLOR_PALETTE[activePlayerCount % COLOR_PALETTE.length];
 
-  // Initialize new player tower state
+  // Initialize new player tower state (Buffed starting stats for smoother early game)
   players[socket.id] = {
     id: socket.id,
     name: `Torre ${socket.id.substring(0, 4)}`,
     x: spawn.x,
     y: spawn.y,
     color: color,
-    hp: 200,
-    maxHp: 200,
+    hp: 300,
+    maxHp: 300,
     level: 1,
     xp: 0,
-    xpToNextLevel: 100,
+    xpToNextLevel: 50, // Requires only 2 zombie kills for the 1st Roguelite level up!
     coins: 0,
     kills: 0,
-    damage: 30,
-    fireRate: 1.2, // Shots per second
-    attackRange: 260,
-    visionRange: 450,
+    damage: 40,
+    fireRate: 1.8, // Fast initial shooting (1 shot every ~550ms)
+    attackRange: 320,
+    visionRange: 480,
     alive: true,
     lastShotTime: 0,
     upgradePending: false,
@@ -162,8 +166,12 @@ io.on('connection', (socket) => {
     player: players[socket.id]
   });
 
-  // Spawn initial wave for this player
-  spawnZombiesForPlayer(players[socket.id]);
+  // Spawn initial wave after a 3-second grace period
+  setTimeout(() => {
+    if (players[socket.id]) {
+      spawnZombiesForPlayer(players[socket.id]);
+    }
+  }, 3000);
 
   // Handle Roguelite Upgrade selection
   socket.on('choose_upgrade', (perkId) => {
@@ -279,6 +287,13 @@ setInterval(() => {
       if (p.alive) spawnZombiesForPlayer(p);
     });
   }
+
+  // Passive Tower HP Regeneration (+3 HP/sec)
+  Object.values(players).forEach(p => {
+    if (p.alive && p.hp < p.maxHp) {
+      p.hp = Math.min(p.maxHp, Math.round(p.hp + 3 * dt));
+    }
+  });
 
   // 2. ZOMBIE AI & MOVEMENT
   const alivePlayerIds = Object.keys(players).filter(id => players[id].alive);
