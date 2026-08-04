@@ -545,6 +545,25 @@ function checkWinner() {
   }
 }
 
-server.listen(PORT, () => {
-  console.log(`🚀 Servidor de Tower Defense corriendo en http://localhost:${PORT}`);
+const os = require('os');
+
+function getLocalIpAddress() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
+server.listen(PORT, '0.0.0.0', () => {
+  const localIp = getLocalIpAddress();
+  console.log(`\n======================================================`);
+  console.log(`🚀 SERVIDOR MULTIJUGADOR LAN ACTIVO`);
+  console.log(`📌 En tu PC: http://localhost:${PORT}`);
+  console.log(`🌐 En la misma red Wi-Fi: http://${localIp}:${PORT}`);
+  console.log(`======================================================\n`);
 });
