@@ -27,7 +27,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #0b0c10;
+      background-color: #060913;
       font-family: 'Outfit', sans-serif;
       color: #ffffff;
     }
@@ -43,25 +43,25 @@
 
     #placement-banner {
       position: absolute;
-      top: 20px;
+      top: 24px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 50;
-      background: rgba(234, 179, 8, 0.9);
+      background: linear-gradient(135deg, #facc15, #eab308);
       color: #000;
-      padding: 12px 28px;
-      border-radius: 30px;
-      font-size: 18px;
+      padding: 14px 32px;
+      border-radius: 40px;
+      font-size: 19px;
       font-weight: 800;
-      box-shadow: 0 0 25px rgba(234, 179, 8, 0.6);
+      box-shadow: 0 0 35px rgba(250, 204, 21, 0.7);
       display: none;
       pointer-events: none;
-      animation: pulse 1.5s infinite;
+      animation: bannerPulse 1.8s ease-in-out infinite;
     }
 
-    @keyframes pulse {
-      0%, 100% { transform: translateX(-50%) scale(1); }
-      50% { transform: translateX(-50%) scale(1.05); }
+    @keyframes bannerPulse {
+      0%, 100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 25px rgba(250, 204, 21, 0.6); }
+      50% { transform: translateX(-50%) scale(1.06); box-shadow: 0 0 45px rgba(250, 204, 21, 0.9); }
     }
 
     #start-screen-modal {
@@ -70,45 +70,52 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(11, 12, 16, 0.92);
-      backdrop-filter: blur(16px);
+      background: radial-gradient(circle at center, rgba(15, 23, 42, 0.92), rgba(6, 9, 19, 0.98));
+      backdrop-filter: blur(20px);
       z-index: 150;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       pointer-events: auto;
+      animation: modalFade 0.4s ease forwards;
+    }
+
+    @keyframes modalFade {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
     }
 
     .start-card {
-      background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.98));
       border: 2px solid rgba(56, 189, 248, 0.4);
       border-radius: 28px;
-      padding: 40px 50px;
-      max-width: 480px;
+      padding: 44px 54px;
+      max-width: 500px;
       width: 90%;
       text-align: center;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.2);
     }
 
     .start-title {
-      font-size: 36px;
+      font-size: 40px;
       font-weight: 800;
-      background: linear-gradient(135deg, #38bdf8, #8b5cf6);
+      background: linear-gradient(135deg, #38bdf8, #a855f7, #facc15);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      letter-spacing: 1px;
     }
 
     .start-sub {
       color: #94a3b8;
       font-size: 15px;
-      margin-bottom: 24px;
-      line-height: 1.4;
+      margin-bottom: 28px;
+      line-height: 1.5;
     }
 
     .input-group {
-      margin-bottom: 24px;
+      margin-bottom: 26px;
       text-align: left;
     }
 
@@ -119,18 +126,25 @@
       color: #38bdf8;
       margin-bottom: 8px;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .input-group input {
       width: 100%;
-      background: rgba(15, 23, 42, 0.8);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 12px;
-      padding: 12px 16px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 14px 18px;
       color: white;
       font-size: 16px;
       font-family: inherit;
       outline: none;
+      transition: all 0.25s;
+    }
+
+    .input-group input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
     }
 
     .btn-start {
@@ -138,13 +152,19 @@
       background: linear-gradient(135deg, #0ea5e9, #2563eb);
       color: white;
       border: none;
-      padding: 14px;
-      font-size: 18px;
+      padding: 16px;
+      font-size: 19px;
       font-weight: 800;
-      border-radius: 14px;
+      border-radius: 16px;
       cursor: pointer;
       font-family: inherit;
-      box-shadow: 0 4px 20px rgba(14, 165, 233, 0.4);
+      box-shadow: 0 6px 25px rgba(14, 165, 233, 0.4);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-start:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 12px 35px rgba(14, 165, 233, 0.6);
     }
 
     #hud-overlay {
@@ -166,64 +186,79 @@
       justify-content: space-between;
       align-items: center;
       width: 100%;
-      max-width: 1300px;
+      max-width: 1350px;
       margin: 0 auto;
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 16px;
-      padding: 12px 24px;
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 14px 28px;
       pointer-events: auto;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     }
 
     .stat-group {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
     }
 
     .stat-badge {
       display: flex;
       align-items: center;
       gap: 8px;
-      background: rgba(255, 255, 255, 0.06);
-      padding: 8px 14px;
-      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.07);
+      padding: 10px 16px;
+      border-radius: 12px;
       font-weight: 700;
       font-size: 15px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: transform 0.2s;
     }
 
     .btn-wave {
-      background: linear-gradient(135deg, #eab308, #ca8a04);
+      background: linear-gradient(135deg, #facc15, #ca8a04);
       color: #000;
       border: none;
-      padding: 10px 18px;
-      font-size: 14px;
+      padding: 12px 22px;
+      font-size: 15px;
       font-weight: 800;
-      border-radius: 10px;
+      border-radius: 12px;
       cursor: pointer;
       font-family: inherit;
+      box-shadow: 0 4px 20px rgba(250, 204, 21, 0.4);
+      transition: all 0.25s;
+    }
+
+    .btn-wave:hover:not(:disabled) {
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 8px 30px rgba(250, 204, 21, 0.7);
     }
 
     .btn-shop-open {
       background: linear-gradient(135deg, #38bdf8, #0284c7);
       color: #fff;
       border: none;
-      padding: 10px 18px;
-      font-size: 14px;
+      padding: 12px 22px;
+      font-size: 15px;
       font-weight: 800;
-      border-radius: 10px;
+      border-radius: 12px;
       cursor: pointer;
       font-family: inherit;
-      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.4);
+      transition: all 0.25s;
+    }
+
+    .btn-shop-open:hover {
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 8px 30px rgba(56, 189, 248, 0.7);
     }
 
     .xp-container {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      width: 180px;
+      width: 190px;
     }
 
     .xp-header {
@@ -237,7 +272,7 @@
     .xp-bar-bg {
       width: 100%;
       height: 10px;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.12);
       border-radius: 5px;
       overflow: hidden;
     }
@@ -248,13 +283,14 @@
       background: linear-gradient(90deg, #3b82f6, #8b5cf6);
       border-radius: 5px;
       transition: width 0.3s ease;
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
     }
 
     .hp-container {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      width: 180px;
+      width: 190px;
     }
 
     .hp-header {
@@ -268,7 +304,7 @@
     .hp-bar-bg {
       width: 100%;
       height: 10px;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.12);
       border-radius: 5px;
       overflow: hidden;
       position: relative;
@@ -289,37 +325,38 @@
       height: 100%;
       width: 0%;
       background: linear-gradient(90deg, #38bdf8, #0ea5e9);
-      opacity: 0.8;
+      opacity: 0.85;
       transition: width 0.2s ease;
     }
 
-    /* COIN SHOP MODAL CONTAINER */
+    /* SHOP MODAL ENHANCEMENTS */
     #shop-modal {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(5, 7, 15, 0.88);
-      backdrop-filter: blur(18px);
+      background: rgba(5, 7, 15, 0.9);
+      backdrop-filter: blur(20px);
       z-index: 120;
       display: none;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      gap: 20px;
+      gap: 24px;
       pointer-events: auto;
+      animation: modalFade 0.3s ease forwards;
     }
 
     .shop-header {
       text-align: center;
       position: relative;
       width: 90%;
-      max-width: 950px;
+      max-width: 1000px;
     }
 
     .shop-title {
-      font-size: 36px;
+      font-size: 38px;
       font-weight: 800;
       background: linear-gradient(135deg, #38bdf8, #facc15);
       -webkit-background-clip: text;
@@ -333,59 +370,67 @@
       background: rgba(255, 255, 255, 0.1);
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: white;
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 700;
       cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-close-shop:hover {
+      background: rgba(239, 68, 68, 0.3);
+      border-color: #ef4444;
+      transform: scale(1.1);
     }
 
     .shop-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-      max-width: 950px;
+      gap: 22px;
+      max-width: 1000px;
       width: 90%;
     }
 
     .shop-card {
       background: linear-gradient(145deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
-      border: 2px solid rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      padding: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 22px;
+      padding: 22px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 12px;
-      transition: all 0.2s;
+      gap: 14px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .shop-card:hover {
       border-color: #facc15;
-      transform: translateY(-4px);
+      transform: translateY(-6px) scale(1.02);
+      box-shadow: 0 15px 35px -5px rgba(250, 204, 21, 0.25);
     }
 
     .shop-card-top {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
     }
 
     .shop-card-icon {
-      font-size: 32px;
-      background: rgba(255, 255, 255, 0.05);
-      width: 56px;
-      height: 56px;
-      border-radius: 14px;
+      font-size: 34px;
+      background: rgba(255, 255, 255, 0.06);
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
     }
 
     .shop-card-info h4 {
-      font-size: 17px;
+      font-size: 18px;
       font-weight: 700;
       color: #f8fafc;
     }
@@ -393,18 +438,17 @@
     .shop-card-info p {
       font-size: 13px;
       color: #94a3b8;
-      line-height: 1.3;
+      line-height: 1.35;
     }
 
     .shop-card-bottom {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 6px;
     }
 
     .shop-level-tag {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 700;
       color: #38bdf8;
     }
@@ -413,12 +457,18 @@
       background: linear-gradient(135deg, #facc15, #eab308);
       color: #000;
       border: none;
-      padding: 8px 16px;
-      font-size: 14px;
+      padding: 10px 20px;
+      font-size: 15px;
       font-weight: 800;
-      border-radius: 10px;
+      border-radius: 12px;
       cursor: pointer;
       font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .btn-buy:hover:not(:disabled) {
+      transform: scale(1.06);
+      box-shadow: 0 0 20px rgba(250, 204, 21, 0.6);
     }
 
     .btn-buy:disabled {
@@ -433,8 +483,8 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(5, 7, 15, 0.85);
-      backdrop-filter: blur(16px);
+      background: rgba(5, 7, 15, 0.88);
+      backdrop-filter: blur(18px);
       z-index: 100;
       display: none;
       flex-direction: column;
@@ -442,10 +492,11 @@
       align-items: center;
       gap: 30px;
       pointer-events: auto;
+      animation: modalFade 0.3s ease forwards;
     }
 
     .modal-title h2 {
-      font-size: 36px;
+      font-size: 40px;
       font-weight: 800;
       background: linear-gradient(135deg, #facc15, #f97316);
       -webkit-background-clip: text;
@@ -462,46 +513,48 @@
 
     .perks-grid {
       display: flex;
-      gap: 24px;
-      max-width: 900px;
+      gap: 26px;
+      max-width: 950px;
       width: 90%;
       justify-content: center;
     }
 
     .perk-card {
       flex: 1;
-      max-width: 260px;
-      background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
-      border: 2px solid rgba(255, 255, 255, 0.1);
-      border-radius: 20px;
-      padding: 24px 20px;
+      max-width: 280px;
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 28px 22px;
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
       cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .perk-card:hover {
-      transform: translateY(-8px) scale(1.03);
+      transform: translateY(-10px) scale(1.04);
       border-color: #38bdf8;
+      box-shadow: 0 20px 40px rgba(56, 189, 248, 0.3);
     }
 
     .perk-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
+      font-size: 52px;
+      margin-bottom: 18px;
       background: rgba(255, 255, 255, 0.05);
-      width: 80px;
-      height: 80px;
+      width: 86px;
+      height: 86px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.12);
     }
 
     .perk-name {
-      font-size: 20px;
+      font-size: 21px;
       font-weight: 700;
       color: #f8fafc;
       margin-bottom: 8px;
@@ -519,47 +572,56 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(10, 10, 20, 0.9);
-      backdrop-filter: blur(20px);
+      background: rgba(10, 10, 20, 0.92);
+      backdrop-filter: blur(22px);
       z-index: 200;
       display: none;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       pointer-events: auto;
+      animation: modalFade 0.4s ease forwards;
     }
 
     .go-card {
-      background: rgba(30, 41, 59, 0.85);
-      border: 2px solid rgba(239, 68, 68, 0.5);
-      border-radius: 24px;
-      padding: 40px 60px;
+      background: rgba(30, 41, 59, 0.9);
+      border: 2px solid rgba(239, 68, 68, 0.6);
+      border-radius: 28px;
+      padding: 44px 64px;
       text-align: center;
+      box-shadow: 0 0 60px rgba(239, 68, 68, 0.35);
     }
 
     .go-title {
-      font-size: 42px;
+      font-size: 46px;
       font-weight: 800;
       color: #ef4444;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     .go-sub {
       color: #94a3b8;
       font-size: 18px;
-      margin-bottom: 30px;
+      margin-bottom: 34px;
     }
 
     .btn-respawn {
       background: linear-gradient(135deg, #3b82f6, #2563eb);
       color: white;
       border: none;
-      padding: 14px 32px;
-      font-size: 18px;
-      font-weight: 700;
-      border-radius: 12px;
+      padding: 16px 36px;
+      font-size: 19px;
+      font-weight: 800;
+      border-radius: 14px;
       cursor: pointer;
       font-family: inherit;
+      box-shadow: 0 6px 25px rgba(59, 130, 246, 0.5);
+      transition: all 0.25s;
+    }
+
+    .btn-respawn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 35px rgba(59, 130, 246, 0.7);
     }
 
     .bottom-bar {
@@ -571,12 +633,12 @@
     }
 
     .leaderboard {
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(10px);
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 14px;
-      padding: 12px 16px;
-      min-width: 200px;
+      border-radius: 16px;
+      padding: 14px 18px;
+      min-width: 220px;
     }
 
     .lb-title {
@@ -584,7 +646,8 @@
       font-weight: 700;
       color: #94a3b8;
       text-transform: uppercase;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
     }
 
     .lb-item {
@@ -592,7 +655,7 @@
       justify-content: space-between;
       align-items: center;
       font-size: 14px;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       font-weight: 600;
     }
 
@@ -601,7 +664,7 @@
       height: 10px;
       border-radius: 50%;
       display: inline-block;
-      margin-right: 6px;
+      margin-right: 8px;
     }
   </style>
 </head>
@@ -691,9 +754,7 @@
       <button class="btn-close-shop" onclick="toggleCoinShop()">✕</button>
     </div>
 
-    <div id="shop-grid-container" class="shop-grid">
-      <!-- Dynamic shop cards rendered here -->
-    </div>
+    <div id="shop-grid-container" class="shop-grid"></div>
   </div>
 
   <!-- Roguelite Perk Modal -->

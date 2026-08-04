@@ -1,4 +1,4 @@
-// Client-side Phaser 3 + Socket.io Game Controller
+// Client-side Phaser 3 + Socket.io Game Controller (Enhanced Dynamic Animations)
 
 class MainScene extends Phaser.Scene {
   constructor() {
@@ -17,6 +17,26 @@ class MainScene extends Phaser.Scene {
     this.playerName = '';
     this.shopItems = {};
 
+    // Animated Background Ambient Dust Particles
+    this.bgParticles = [];
+    for (let i = 0; i < 60; i++) {
+      this.bgParticles.push({
+        x: Math.random() * this.mapSize,
+        y: Math.random() * this.mapSize,
+        radius: Math.random() * 2 + 1,
+        alpha: Math.random() * 0.4 + 0.1,
+        speedX: (Math.random() - 0.5) * 10,
+        speedY: (Math.random() - 0.5) * 10
+      });
+    }
+
+    // Floating Damage Text Array
+    this.floatingTexts = [];
+
+    // Smooth turret angle interpolations cache
+    this.turretAngles = {};
+
+    // Render containers for depth management
     this.bgGraphics = this.add.graphics();
     this.previewGraphics = this.add.graphics();
     this.rangeGraphics = this.add.graphics();
@@ -26,7 +46,6 @@ class MainScene extends Phaser.Scene {
     this.fxGraphics = this.add.graphics();
 
     this.cameras.main.setBounds(0, 0, this.mapSize, this.mapSize);
-    this.drawMapGrid();
 
     this.initAudio();
     this.setupSocket();
@@ -62,16 +81,16 @@ class MainScene extends Phaser.Scene {
 
     if (type === 'shoot') {
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(600, now);
-      osc.frequency.exponentialRampToValueAtTime(100, now + 0.12);
+      osc.frequency.setValueAtTime(650, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.12);
       gain.gain.setValueAtTime(0.15, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
       osc.start(now);
       osc.stop(now + 0.12);
     } else if (type === 'hit') {
       osc.type = 'square';
-      osc.frequency.setValueAtTime(180, now);
-      osc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
+      osc.frequency.setValueAtTime(190, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.08);
       gain.gain.setValueAtTime(0.2, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
       osc.start(now);
@@ -79,11 +98,11 @@ class MainScene extends Phaser.Scene {
     } else if (type === 'levelup') {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(400, now);
-      osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+      osc.frequency.exponentialRampToValueAtTime(900, now + 0.25);
       gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
       osc.start(now);
-      osc.stop(now + 0.3);
+      osc.stop(now + 0.35);
     } else if (type === 'buy') {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(350, now);
@@ -107,7 +126,6 @@ class MainScene extends Phaser.Scene {
     this.socket.on('connected', (data) => {
       this.mapSize = data.mapSize;
       this.shopItems = data.shopItems || {};
-      this.drawMapGrid();
     });
 
     this.socket.on('init_game', (data) => {
@@ -208,14 +226,37 @@ class MainScene extends Phaser.Scene {
     });
   }
 
-  drawMapGrid() {
+  spawnFloatingText(x, y, text, color = '#ff4757') {
+    const txtObj = this.add.text(x + (Math.random() * 20 - 10), y - 10, text, {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '15px',
+      fontWeight: '800',
+      fill: color,
+      stroke: '#000000',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: txtObj,
+      y: y - 45,
+      alpha: 0,
+      duration: 850,
+      ease: 'Power2',
+      onComplete: () => {
+        txtObj.destroy();
+      }
+    });
+  }
+
+  drawMapGrid(time = 0) {
     const g = this.bgGraphics;
     g.clear();
 
-    g.fillStyle(0x0f172a, 1);
+    // Dark Cyber Grid Background
+    g.fillStyle(0x0a0d17, 1);
     g.fillRect(0, 0, this.mapSize, this.mapSize);
 
-    g.lineStyle(1, 0x1e293b, 0.6);
+    g.lineStyle(1, 0x1e293b, 0.5);
     const gridSize = 100;
     for (let x = 0; x <= this.mapSize; x += gridSize) {
       g.lineBetween(x, 0, x, this.mapSize);
@@ -224,14 +265,31 @@ class MainScene extends Phaser.Scene {
       g.lineBetween(0, y, this.mapSize, y);
     }
 
-    g.lineStyle(6, 0xef4444, 0.8);
+    // Animated Ambient Starfield / Cyber Dust
+    const dt = 0.016;
+    this.bgParticles.forEach(p => {
+      p.x = (p.x + p.speedX * dt + this.mapSize) % this.mapSize;
+      p.y = (p.y + p.speedY * dt + this.mapSize) % this.mapSize;
+      
+      const pAlpha = p.alpha + Math.sin(time * 0.002 + p.x) * 0.15;
+      g.fillStyle(0x38bdf8, Math.max(0.05, Math.min(0.7, pAlpha)));
+      g.fillCircle(p.x, p.y, p.radius);
+    });
+
+    // Outer Boundary Pulsing Glow
+    const borderGlow = 0.6 + Math.sin(time * 0.003) * 0.2;
+    g.lineStyle(8, 0xef4444, borderGlow);
     g.strokeRect(0, 0, this.mapSize, this.mapSize);
   }
 
   renderGameState(state) {
+    const time = this.time.now;
+    this.drawMapGrid(time);
+
     this.lastStatePlayers = state.players;
     const localPlayer = state.players[this.localPlayerId];
 
+    // Smooth Camera Following
     if (localPlayer && localPlayer.alive) {
       this.cameras.main.scrollX = Phaser.Math.Linear(this.cameras.main.scrollX, localPlayer.x - this.cameras.main.width / 2, 0.1);
       this.cameras.main.scrollY = Phaser.Math.Linear(this.cameras.main.scrollY, localPlayer.y - this.cameras.main.height / 2, 0.1);
@@ -266,7 +324,6 @@ class MainScene extends Phaser.Scene {
         }
       }
 
-      // Non-destructive shop affordability update (prevents DOM destruction & button click bugs!)
       if (document.getElementById('shop-modal').style.display === 'flex') {
         this.updateShopAffordability(localPlayer);
       }
@@ -280,19 +337,23 @@ class MainScene extends Phaser.Scene {
     this.towersContainer.removeAll(true);
     this.zombiesContainer.removeAll(true);
 
+    // 1. DYNAMIC ATTACK & VISION RANGE RINGS
     if (localPlayer && localPlayer.alive) {
       const colorNum = parseInt(localPlayer.color.replace('#', '0x'), 16);
 
+      // Vision Range Circle
       this.rangeGraphics.lineStyle(2, 0xffffff, 0.15);
       this.rangeGraphics.strokeCircle(localPlayer.x, localPlayer.y, localPlayer.visionRange);
 
-      this.rangeGraphics.lineStyle(2, colorNum, 0.4);
-      this.rangeGraphics.fillStyle(colorNum, 0.05);
-      this.rangeGraphics.fillCircle(localPlayer.x, localPlayer.y, localPlayer.attackRange);
-      this.rangeGraphics.strokeCircle(localPlayer.x, localPlayer.y, localPlayer.attackRange);
+      // Pulsing Attack Range Perimeter
+      const rangePulse = Math.sin(time * 0.004) * 2;
+      this.rangeGraphics.lineStyle(2.5, colorNum, 0.45);
+      this.rangeGraphics.fillStyle(colorNum, 0.05 + Math.sin(time * 0.003) * 0.02);
+      this.rangeGraphics.fillCircle(localPlayer.x, localPlayer.y, localPlayer.attackRange + rangePulse);
+      this.rangeGraphics.strokeCircle(localPlayer.x, localPlayer.y, localPlayer.attackRange + rangePulse);
     }
 
-    // RENDER PLAYERS & TOWERS & SHIELDS
+    // 2. ANIMATED TOWERS & ROTATING TURRET BARRELS
     Object.values(state.players).forEach(player => {
       if (!player.alive) return;
 
@@ -302,24 +363,26 @@ class MainScene extends Phaser.Scene {
       const tContainer = this.add.container(player.x, player.y);
       const g = this.add.graphics();
 
-      // Outer Shield Barrier Aura
+      // Pulsing Shield Barrier Aura
       if (player.shieldHp > 0) {
-        g.lineStyle(4, 0x38bdf8, 0.85);
-        g.fillStyle(0x38bdf8, 0.15);
-        g.fillCircle(0, 0, 44);
-        g.strokeCircle(0, 0, 44);
+        const shieldPulse = 44 + Math.sin(time * 0.006) * 3;
+        const shieldAlpha = 0.7 + Math.sin(time * 0.008) * 0.2;
+        g.lineStyle(4, 0x38bdf8, shieldAlpha);
+        g.fillStyle(0x38bdf8, 0.12);
+        g.fillCircle(0, 0, shieldPulse);
+        g.strokeCircle(0, 0, shieldPulse);
       }
 
-      // Outer Octagon Fort
+      // Reactor Core Base Octagon Pulsing Animation
+      const pulseRadius = 34 + Math.sin(time * 0.005 + player.x) * 1.5;
       g.lineStyle(3, pColor, 0.9);
       g.fillStyle(pColor, 0.25);
 
       const points = [];
       const sides = 8;
-      const radius = 34;
       for (let i = 0; i < sides; i++) {
         const angle = (i * Math.PI * 2) / sides;
-        points.push(new Phaser.Geom.Point(Math.cos(angle) * radius, Math.sin(angle) * radius));
+        points.push(new Phaser.Geom.Point(Math.cos(angle) * pulseRadius, Math.sin(angle) * pulseRadius));
       }
       g.fillPoints(points, true);
       g.strokePoints(points, true);
@@ -330,31 +393,60 @@ class MainScene extends Phaser.Scene {
       g.lineStyle(2, pColor, 1);
       g.strokeCircle(0, 0, 20);
 
-      // Turret Barrel (Multi-barrel visual if multiShot > 1)
-      g.fillStyle(pColor, 1);
-      if (player.multiShot > 1) {
-        g.fillRect(-10, -22, 6, 16);
-        g.fillRect(4, -22, 6, 16);
-      } else {
-        g.fillRect(-4, -22, 8, 16);
+      // ROTATING TURRET BARREL AIMING AT CLOSEST TARGET
+      let aimAngle = this.turretAngles[player.id] || 0;
+      let targetEntity = null;
+
+      // Find closest zombie or player to point barrel at
+      let minD = player.attackRange;
+      Object.values(state.zombies).forEach(z => {
+        const d = Math.hypot(z.x - player.x, z.y - player.y);
+        if (d <= minD) { minD = d; targetEntity = z; }
+      });
+      if (!targetEntity) {
+        Object.values(state.players).forEach(p => {
+          if (p.id !== player.id && p.alive) {
+            const d = Math.hypot(p.x - player.x, p.y - player.y);
+            if (d <= minD) { minD = d; targetEntity = p; }
+          }
+        });
       }
+
+      if (targetEntity) {
+        const targetAngle = Phaser.Math.Angle.Between(player.x, player.y, targetEntity.x, targetEntity.y);
+        aimAngle = Phaser.Math.Angle.RotateTo(aimAngle, targetAngle, 0.1);
+        this.turretAngles[player.id] = aimAngle;
+      }
+
+      // Draw Rotating Turret Barrel Container
+      const barrelG = this.add.graphics();
+      barrelG.rotation = aimAngle + Math.PI / 2;
+      barrelG.fillStyle(pColor, 1);
+
+      if (player.multiShot > 1) {
+        barrelG.fillRect(-10, -24, 6, 18);
+        barrelG.fillRect(4, -24, 6, 18);
+      } else {
+        barrelG.fillRect(-4, -24, 8, 18);
+      }
+      tContainer.add(barrelG);
 
       tContainer.add(g);
 
       // HP Bar above tower
       const hpBarBg = this.add.graphics();
       hpBarBg.fillStyle(0x000000, 0.7);
-      hpBarBg.fillRect(-30, -52, 60, 8);
+      hpBarBg.fillRect(-30, -54, 60, 8);
 
       const hpFillPct = Math.max(0, player.hp / player.maxHp);
       const hpColor = hpFillPct > 0.5 ? 0x22c55e : hpFillPct > 0.25 ? 0xeab308 : 0xef4444;
       hpBarBg.fillStyle(hpColor, 1);
-      hpBarBg.fillRect(-29, -51, 58 * hpFillPct, 6);
+      hpBarBg.fillRect(-29, -53, 58 * hpFillPct, 6);
 
       tContainer.add(hpBarBg);
 
       // Name & Level Tag
-      const nameText = this.add.text(0, -66, `${player.name} [Lvl ${player.level}]`, {
+      const nameText = this.add.text(0, -68, `${player.name} [Lvl ${player.level}]`, {
         fontFamily: 'Outfit, sans-serif',
         fontSize: '12px',
         fontWeight: 'bold',
@@ -368,23 +460,32 @@ class MainScene extends Phaser.Scene {
       this.towersContainer.add(tContainer);
     });
 
-    // RENDER ZOMBIES
+    // 3. ANIMATED ZOMBIES (SQUASH & WOBBLE MOVEMENT)
     Object.values(state.zombies).forEach(zombie => {
       const zColor = parseInt(zombie.color.replace('#', '0x'), 16);
 
       const zGraphics = this.add.graphics();
-      zGraphics.x = zombie.x;
-      zGraphics.y = zombie.y;
+      
+      // Zombie Walking Bob/Wobble Animation
+      const seed = zombie.x * 0.1;
+      const wobbleX = Math.sin(time * 0.012 + seed) * 2;
+      const wobbleY = Math.cos(time * 0.012 + seed) * 2;
 
-      zGraphics.fillStyle(zColor, 0.9);
-      zGraphics.lineStyle(2, 0x000000, 0.8);
+      zGraphics.x = zombie.x + wobbleX;
+      zGraphics.y = zombie.y + wobbleY;
+
+      zGraphics.fillStyle(zColor, 0.95);
+      zGraphics.lineStyle(2, 0x000000, 0.9);
       zGraphics.fillCircle(0, 0, zombie.radius);
       zGraphics.strokeCircle(0, 0, zombie.radius);
 
-      zGraphics.fillStyle(0xff0000, 1);
+      // Pulsing Glowing Red Eyes
+      const eyeGlow = 0.8 + Math.sin(time * 0.01 + seed) * 0.2;
+      zGraphics.fillStyle(0xff0000, eyeGlow);
       zGraphics.fillCircle(-4, -3, 2.5);
       zGraphics.fillCircle(4, -3, 2.5);
 
+      // Mini HP bar
       const hpPct = Math.max(0, zombie.hp / zombie.maxHp);
       zGraphics.fillStyle(0x000000, 0.6);
       zGraphics.fillRect(-12, -zombie.radius - 8, 24, 4);
@@ -394,33 +495,48 @@ class MainScene extends Phaser.Scene {
       this.zombiesContainer.add(zGraphics);
     });
 
-    // RENDER PROJECTILES
+    // 4. ANIMATED PROJECTILES WITH GLOWING LASER TRAILS
     state.projectiles.forEach(proj => {
       const projColor = parseInt(proj.color.replace('#', '0x'), 16);
       
+      // Motion Trail Tail
+      const angle = Math.atan2(proj.targetY - proj.y, proj.targetX - proj.x);
+      const tailLen = 14;
+      const tailX = proj.x - Math.cos(angle) * tailLen;
+      const tailY = proj.y - Math.sin(angle) * tailLen;
+
+      this.projectilesGraphics.lineStyle(4, projColor, 0.6);
+      this.projectilesGraphics.lineBetween(proj.x, proj.y, tailX, tailY);
+
+      // Projectile Core Head
       this.projectilesGraphics.fillStyle(projColor, 1);
       this.projectilesGraphics.fillCircle(proj.x, proj.y, 6);
 
-      this.projectilesGraphics.fillStyle(0xffffff, 0.9);
+      this.projectilesGraphics.fillStyle(0xffffff, 0.95);
       this.projectilesGraphics.fillCircle(proj.x, proj.y, 3);
     });
 
-    // RENDER HIT & SPLASH FX
+    // 5. ANIMATED HIT & SPLASH IMPACT PARTICLES
     state.hitEffects.forEach(fx => {
       const fxColor = parseInt(fx.color.replace('#', '0x'), 16);
-      this.fxGraphics.fillStyle(fxColor, 0.8);
 
       if (fx.radius) {
+        // Dynamic Expanding Splash Shockwave
         this.fxGraphics.lineStyle(3, 0xf97316, 0.9);
-        this.fxGraphics.fillStyle(0xf97316, 0.3);
+        this.fxGraphics.fillStyle(0xf97316, 0.35);
         this.fxGraphics.fillCircle(fx.x, fx.y, fx.radius);
         this.fxGraphics.strokeCircle(fx.x, fx.y, fx.radius);
       } else {
-        for (let i = 0; i < 5; i++) {
-          const ox = (Math.random() - 0.5) * 20;
-          const oy = (Math.random() - 0.5) * 20;
-          this.fxGraphics.fillCircle(fx.x + ox, fx.y + oy, Math.random() * 3 + 1);
+        // Starburst Sparks
+        this.fxGraphics.fillStyle(fxColor, 0.9);
+        for (let i = 0; i < 6; i++) {
+          const ox = (Math.random() - 0.5) * 24;
+          const oy = (Math.random() - 0.5) * 24;
+          this.fxGraphics.fillCircle(fx.x + ox, fx.y + oy, Math.random() * 4 + 1.5);
         }
+
+        // Spawn Floating Damage Popups!
+        this.spawnFloatingText(fx.x, fx.y, '-35', fx.color === '#FF4757' ? '#ef4444' : '#facc15');
       }
 
       this.playSynthSound('hit');
@@ -453,7 +569,6 @@ class MainScene extends Phaser.Scene {
     });
   }
 
-  // Non-destructive update for shop buttons (prevents element recreation on 30 FPS tick!)
   updateShopAffordability(localPlayer) {
     if (!this.shopItems || !localPlayer) return;
     Object.keys(this.shopItems).forEach(itemId => {
@@ -471,7 +586,6 @@ class MainScene extends Phaser.Scene {
     });
   }
 
-  // Full DOM construction for shop cards (only called on modal open or purchase success)
   renderShopCards(localPlayer) {
     const container = document.getElementById('shop-grid-container');
     if (!container || !this.shopItems) return;
@@ -553,7 +667,6 @@ class MainScene extends Phaser.Scene {
   }
 }
 
-// Global Shop & Action Helpers
 function toggleCoinShop() {
   const modal = document.getElementById('shop-modal');
   if (!modal) return;
