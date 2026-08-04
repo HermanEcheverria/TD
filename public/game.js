@@ -6,7 +6,7 @@ class MainScene extends Phaser.Scene {
   }
 
   preload() {
-    // No external image assets needed - using Phaser procedural Graphics
+    // Procedural Graphics
   }
 
   create() {
@@ -15,8 +15,8 @@ class MainScene extends Phaser.Scene {
     this.mapSize = 2000;
     this.isPlacementMode = false;
     this.playerName = '';
+    this.shopItems = {};
 
-    // Render containers for depth management
     this.bgGraphics = this.add.graphics();
     this.previewGraphics = this.add.graphics();
     this.rangeGraphics = this.add.graphics();
@@ -25,20 +25,13 @@ class MainScene extends Phaser.Scene {
     this.projectilesGraphics = this.add.graphics();
     this.fxGraphics = this.add.graphics();
 
-    // Map bounds
     this.cameras.main.setBounds(0, 0, this.mapSize, this.mapSize);
     this.drawMapGrid();
 
-    // Web Audio Synthesizer
     this.initAudio();
-
-    // Setup Socket Listeners
     this.setupSocket();
-
-    // Setup Pointer Events for Tower Placement & Camera Pan
     this.setupInputListeners();
 
-    // Window resize
     window.addEventListener('resize', () => {
       this.scale.resize(window.innerWidth, window.innerHeight);
     });
@@ -91,6 +84,14 @@ class MainScene extends Phaser.Scene {
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
       osc.start(now);
       osc.stop(now + 0.3);
+    } else if (type === 'buy') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.15);
     } else if (type === 'explosion') {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(120, now);
@@ -105,11 +106,13 @@ class MainScene extends Phaser.Scene {
   setupSocket() {
     this.socket.on('connected', (data) => {
       this.mapSize = data.mapSize;
+      this.shopItems = data.shopItems || {};
       this.drawMapGrid();
     });
 
     this.socket.on('init_game', (data) => {
       this.localPlayerId = data.playerId;
+      this.shopItems = data.shopItems || this.shopItems;
       this.isPlacementMode = false;
 
       document.getElementById('placement-banner').style.display = 'none';
@@ -122,6 +125,11 @@ class MainScene extends Phaser.Scene {
 
     this.socket.on('state_update', (data) => {
       this.renderGameState(data);
+    });
+
+    this.socket.on('shop_purchase_success', (data) => {
+      this.playSynthSound('buy');
+      this.renderShopCards(data.player);
     });
 
     this.socket.on('wave_started', (data) => {
@@ -138,7 +146,7 @@ class MainScene extends Phaser.Scene {
       this.showUpgradeModal(data.options);
     });
 
-    this.socket.on('upgrade_applied', (data) => {
+    this.socket.on('upgrade_applied', () => {
       document.getElementById('upgrade-modal').style.display = 'none';
     });
 
@@ -157,13 +165,13 @@ class MainScene extends Phaser.Scene {
       this.localPlayerId = null;
       this.isPlacementMode = false;
       document.getElementById('hud-overlay').style.display = 'none';
+      document.getElementById('shop-modal').style.display = 'none';
       document.getElementById('start-screen-modal').style.display = 'flex';
       this.cameras.main.centerOn(this.mapSize / 2, this.mapSize / 2);
     });
   }
 
   setupInputListeners() {
-    // Placement click listener
     this.input.on('pointerdown', (pointer) => {
       if (this.isPlacementMode) {
         const placeX = Math.round(pointer.worldX);
@@ -179,7 +187,6 @@ class MainScene extends Phaser.Scene {
       }
     });
 
-    // Ghost tower preview on mousemove
     this.input.on('pointermove', (pointer) => {
       if (this.isPlacementMode) {
         const g = this.previewGraphics;
@@ -188,13 +195,11 @@ class MainScene extends Phaser.Scene {
         const x = pointer.worldX;
         const y = pointer.worldY;
 
-        // Attack Range Ghost Ring
         g.lineStyle(2, 0x38bdf8, 0.6);
         g.fillStyle(0x38bdf8, 0.1);
         g.fillCircle(x, y, 330);
         g.strokeCircle(x, y, 330);
 
-        // Tower Ghost Polygon
         g.lineStyle(3, 0xfacc15, 0.9);
         g.fillStyle(0xfacc15, 0.4);
         g.fillCircle(x, y, 24);
@@ -227,15 +232,16 @@ class MainScene extends Phaser.Scene {
     this.lastStatePlayers = state.players;
     const localPlayer = state.players[this.localPlayerId];
 
-    // Smooth Camera Following
     if (localPlayer && localPlayer.alive) {
       this.cameras.main.scrollX = Phaser.Math.Linear(this.cameras.main.scrollX, localPlayer.x - this.cameras.main.width / 2, 0.1);
       this.cameras.main.scrollY = Phaser.Math.Linear(this.cameras.main.scrollY, localPlayer.y - this.cameras.main.height / 2, 0.1);
 
-      // HUD Stats Update
-      document.getElementById('hp-text').innerText = `${Math.round(localPlayer.hp)} / ${localPlayer.maxHp}`;
+      document.getElementById('hp-text').innerText = `${Math.round(localPlayer.hp)} / ${localPlayer.maxHp} ${localPlayer.shieldHp > 0 ? `(+${Math.round(localPlayer.shieldHp)} 🛡️)` : ''}`;
       const hpPct = Math.max(0, (localPlayer.hp / localPlayer.maxHp) * 100);
       document.getElementById('hp-fill').style.width = `${hpPct}%`;
+
+      const shieldPct = Math.min(100, (localPlayer.shieldHp / (localPlayer.maxShieldHp || 1)) * 100);
+      document.getElementById('shield-fill').style.width = `${localPlayer.shieldHp > 0 ? shieldPct : 0}%`;
 
       document.getElementById('level-badge').innerText = `NIVEL ${localPlayer.level}`;
       document.getElementById('xp-text').innerText = `${localPlayer.xp} / ${localPlayer.xpToNextLevel} XP`;
@@ -245,7 +251,6 @@ class MainScene extends Phaser.Scene {
       document.getElementById('coins-text').innerText = localPlayer.coins;
       document.getElementById('kills-text').innerText = localPlayer.kills;
       
-      // Update Wave Button State
       const btn = document.getElementById('btn-next-wave');
       const playerZombies = Object.values(state.zombies).filter(z => z.targetPlayerId === this.localPlayerId);
       
@@ -260,6 +265,11 @@ class MainScene extends Phaser.Scene {
           btn.innerText = `OLEADA ${localPlayer.wave} (${playerZombies.length} Zombis restantes)`;
         }
       }
+
+      // Refresh shop card affordability state if shop modal is open
+      if (document.getElementById('shop-modal').style.display === 'flex') {
+        this.renderShopCards(localPlayer);
+      }
     }
 
     this.updateLeaderboard(state.players);
@@ -270,7 +280,6 @@ class MainScene extends Phaser.Scene {
     this.towersContainer.removeAll(true);
     this.zombiesContainer.removeAll(true);
 
-    // RENDER RANGES FOR LOCAL PLAYER
     if (localPlayer && localPlayer.alive) {
       const colorNum = parseInt(localPlayer.color.replace('#', '0x'), 16);
 
@@ -283,7 +292,7 @@ class MainScene extends Phaser.Scene {
       this.rangeGraphics.strokeCircle(localPlayer.x, localPlayer.y, localPlayer.attackRange);
     }
 
-    // RENDER PLAYERS & TOWERS
+    // RENDER PLAYERS & TOWERS & SHIELDS
     Object.values(state.players).forEach(player => {
       if (!player.alive) return;
 
@@ -292,6 +301,14 @@ class MainScene extends Phaser.Scene {
 
       const tContainer = this.add.container(player.x, player.y);
       const g = this.add.graphics();
+
+      // Outer Shield Barrier Aura if active
+      if (player.shieldHp > 0) {
+        g.lineStyle(4, 0x38bdf8, 0.85);
+        g.fillStyle(0x38bdf8, 0.15);
+        g.fillCircle(0, 0, 44);
+        g.strokeCircle(0, 0, 44);
+      }
 
       // Outer Octagon Fort
       g.lineStyle(3, pColor, 0.9);
@@ -313,9 +330,14 @@ class MainScene extends Phaser.Scene {
       g.lineStyle(2, pColor, 1);
       g.strokeCircle(0, 0, 20);
 
-      // Turret Barrel
+      // Turret Barrel (Multi-barrel visual if multiShot > 1)
       g.fillStyle(pColor, 1);
-      g.fillRect(-4, -22, 8, 16);
+      if (player.multiShot > 1) {
+        g.fillRect(-10, -22, 6, 16);
+        g.fillRect(4, -22, 6, 16);
+      } else {
+        g.fillRect(-4, -22, 8, 16);
+      }
 
       tContainer.add(g);
 
@@ -383,15 +405,23 @@ class MainScene extends Phaser.Scene {
       this.projectilesGraphics.fillCircle(proj.x, proj.y, 3);
     });
 
-    // RENDER HIT EFFECTS
+    // RENDER HIT & SPLASH FX
     state.hitEffects.forEach(fx => {
       const fxColor = parseInt(fx.color.replace('#', '0x'), 16);
       this.fxGraphics.fillStyle(fxColor, 0.8);
 
-      for (let i = 0; i < 5; i++) {
-        const ox = (Math.random() - 0.5) * 20;
-        const oy = (Math.random() - 0.5) * 20;
-        this.fxGraphics.fillCircle(fx.x + ox, fx.y + oy, Math.random() * 3 + 1);
+      if (fx.radius) {
+        // Splash Area Explosion Effect
+        this.fxGraphics.lineStyle(3, 0xf97316, 0.9);
+        this.fxGraphics.fillStyle(0xf97316, 0.3);
+        this.fxGraphics.fillCircle(fx.x, fx.y, fx.radius);
+        this.fxGraphics.strokeCircle(fx.x, fx.y, fx.radius);
+      } else {
+        for (let i = 0; i < 5; i++) {
+          const ox = (Math.random() - 0.5) * 20;
+          const oy = (Math.random() - 0.5) * 20;
+          this.fxGraphics.fillCircle(fx.x + ox, fx.y + oy, Math.random() * 3 + 1);
+        }
       }
 
       this.playSynthSound('hit');
@@ -421,6 +451,42 @@ class MainScene extends Phaser.Scene {
       `;
 
       lbContainer.appendChild(item);
+    });
+  }
+
+  renderShopCards(localPlayer) {
+    const container = document.getElementById('shop-grid-container');
+    if (!container || !this.shopItems) return;
+
+    container.innerHTML = '';
+
+    Object.keys(this.shopItems).forEach(itemId => {
+      const item = this.shopItems[itemId];
+      const level = (localPlayer && localPlayer.shopPurchases) ? (localPlayer.shopPurchases[itemId] || 0) : 0;
+      const cost = Math.round(item.baseCost * Math.pow(1.35, level));
+
+      const card = document.createElement('div');
+      card.className = 'shop-card';
+
+      const canAfford = localPlayer && localPlayer.coins >= cost;
+
+      card.innerHTML = `
+        <div class="shop-card-top">
+          <div class="shop-card-icon">${item.icon}</div>
+          <div class="shop-card-info">
+            <h4>${item.name}</h4>
+            <p>${item.desc}</p>
+          </div>
+        </div>
+        <div class="shop-card-bottom">
+          <div class="shop-level-tag">NIVEL ${level}</div>
+          <button class="btn-buy" ${canAfford ? '' : 'disabled'} onclick="buyShopItem('${itemId}')">
+            ${cost} 🪙
+          </button>
+        </div>
+      `;
+
+      container.appendChild(card);
     });
   }
 
@@ -469,7 +535,31 @@ class MainScene extends Phaser.Scene {
   }
 }
 
-// Global Start & Wave Helpers
+// Global Shop & Action Helpers
+function toggleCoinShop() {
+  const modal = document.getElementById('shop-modal');
+  if (!modal) return;
+
+  const isVisible = modal.style.display === 'flex';
+  modal.style.display = isVisible ? 'none' : 'flex';
+
+  if (!isVisible && window.gameInstance && window.gameInstance.scene.scenes[0]) {
+    const scene = window.gameInstance.scene.scenes[0];
+    if (scene.lastStatePlayers && scene.localPlayerId) {
+      scene.renderShopCards(scene.lastStatePlayers[scene.localPlayerId]);
+    }
+  }
+}
+
+function buyShopItem(itemId) {
+  if (window.gameInstance && window.gameInstance.scene.scenes[0]) {
+    const scene = window.gameInstance.scene.scenes[0];
+    if (scene.socket) {
+      scene.socket.emit('buy_shop_item', itemId);
+    }
+  }
+}
+
 function enterPlacementMode() {
   const nameInput = document.getElementById('player-name-input');
   const name = nameInput.value.trim();
@@ -503,7 +593,6 @@ function respawnGame() {
   }
 }
 
-// Initialize Phaser Game Configuration
 const config = {
   type: Phaser.AUTO,
   width: window.innerWidth,

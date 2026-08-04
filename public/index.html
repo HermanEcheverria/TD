@@ -41,7 +41,6 @@
       z-index: 1;
     }
 
-    /* PLACEMENT INSTRUCTION BANNER */
     #placement-banner {
       position: absolute;
       top: 20px;
@@ -65,7 +64,6 @@
       50% { transform: translateX(-50%) scale(1.05); }
     }
 
-    /* START SCREEN MODAL */
     #start-screen-modal {
       position: absolute;
       top: 0;
@@ -133,11 +131,6 @@
       font-size: 16px;
       font-family: inherit;
       outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .input-group input:focus {
-      border-color: #38bdf8;
     }
 
     .btn-start {
@@ -152,15 +145,8 @@
       cursor: pointer;
       font-family: inherit;
       box-shadow: 0 4px 20px rgba(14, 165, 233, 0.4);
-      transition: all 0.2s;
     }
 
-    .btn-start:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(14, 165, 233, 0.6);
-    }
-
-    /* UI GLASSMORPHISM HUD OVERLAY */
     #hud-overlay {
       position: absolute;
       top: 0;
@@ -180,21 +166,20 @@
       justify-content: space-between;
       align-items: center;
       width: 100%;
-      max-width: 1200px;
+      max-width: 1300px;
       margin: 0 auto;
       background: rgba(15, 23, 42, 0.75);
       backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 16px;
       padding: 12px 24px;
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
       pointer-events: auto;
     }
 
     .stat-group {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
     }
 
     .stat-badge {
@@ -209,7 +194,6 @@
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    /* START WAVE BUTTON */
     .btn-wave {
       background: linear-gradient(135deg, #eab308, #ca8a04);
       color: #000;
@@ -220,20 +204,26 @@
       border-radius: 10px;
       cursor: pointer;
       font-family: inherit;
-      box-shadow: 0 0 15px rgba(234, 179, 8, 0.4);
-      transition: all 0.2s;
     }
 
-    .btn-wave:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 25px rgba(234, 179, 8, 0.7);
+    .btn-shop-open {
+      background: linear-gradient(135deg, #38bdf8, #0284c7);
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 800;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
     }
 
     .xp-container {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      width: 200px;
+      width: 180px;
     }
 
     .xp-header {
@@ -281,6 +271,7 @@
       background: rgba(255, 255, 255, 0.1);
       border-radius: 5px;
       overflow: hidden;
+      position: relative;
     }
 
     .hp-bar-fill {
@@ -291,7 +282,151 @@
       transition: width 0.2s ease;
     }
 
-    /* ROGUELITE PERK MODAL */
+    .shield-bar-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #0ea5e9);
+      opacity: 0.8;
+      transition: width 0.2s ease;
+    }
+
+    /* COIN SHOP MODAL CONTAINER */
+    #shop-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(5, 7, 15, 0.88);
+      backdrop-filter: blur(18px);
+      z-index: 120;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      pointer-events: auto;
+    }
+
+    .shop-header {
+      text-align: center;
+      position: relative;
+      width: 90%;
+      max-width: 950px;
+    }
+
+    .shop-title {
+      font-size: 36px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #38bdf8, #facc15);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .btn-close-shop {
+      position: absolute;
+      right: 0;
+      top: 0;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 950px;
+      width: 90%;
+    }
+
+    .shop-card {
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      transition: all 0.2s;
+    }
+
+    .shop-card:hover {
+      border-color: #facc15;
+      transform: translateY(-4px);
+    }
+
+    .shop-card-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .shop-card-icon {
+      font-size: 32px;
+      background: rgba(255, 255, 255, 0.05);
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .shop-card-info h4 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .shop-card-info p {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.3;
+    }
+
+    .shop-card-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .shop-level-tag {
+      font-size: 12px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .btn-buy {
+      background: linear-gradient(135deg, #facc15, #eab308);
+      color: #000;
+      border: none;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn-buy:disabled {
+      background: rgba(255, 255, 255, 0.1);
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
     #upgrade-modal {
       position: absolute;
       top: 0;
@@ -351,7 +486,6 @@
     .perk-card:hover {
       transform: translateY(-8px) scale(1.03);
       border-color: #38bdf8;
-      box-shadow: 0 20px 35px -5px rgba(56, 189, 248, 0.3);
     }
 
     .perk-icon {
@@ -379,7 +513,6 @@
       font-weight: 600;
     }
 
-    /* GAME OVER MODAL */
     #gameover-modal {
       position: absolute;
       top: 0;
@@ -474,19 +607,16 @@
 </head>
 <body>
 
-  <!-- Phaser Canvas Parent Container -->
   <div id="game-container"></div>
 
-  <!-- Placement Instruction Banner -->
   <div id="placement-banner">
     📍 HAZ CLIC EN EL MAPA PARA UBICAR TU TORRE
   </div>
 
-  <!-- Start Screen Lobby Modal -->
   <div id="start-screen-modal">
     <div class="start-card">
       <div class="start-title">TOWER DEFENSE BR</div>
-      <div class="start-sub">Crea tu Torre, defiéndete de hordas de zombis y derrota a otros jugadores en el campo de batalla.</div>
+      <div class="start-sub">Construye tu Torre, compra armamento con monedas y domina las hordas y jugadores.</div>
       
       <div class="input-group">
         <label for="player-name-input">Nombre de tu Torre</label>
@@ -501,14 +631,15 @@
   <div id="hud-overlay">
     
     <div class="top-bar">
-      <!-- Player HP Bar -->
+      <!-- Player HP & Shield Bar -->
       <div class="hp-container">
         <div class="hp-header">
-          <span>SALUD TORRE</span>
+          <span>SALUD / ESCUDO</span>
           <span id="hp-text">350 / 350</span>
         </div>
         <div class="hp-bar-bg">
           <div id="hp-fill" class="hp-bar-fill"></div>
+          <div id="shield-fill" class="shield-bar-fill"></div>
         </div>
       </div>
 
@@ -523,16 +654,21 @@
         </div>
       </div>
 
-      <!-- Badges & Wave Trigger Button -->
+      <!-- Stat Badges & Action Buttons -->
       <div class="stat-group">
         <div class="stat-badge" style="color: #facc15;">
           <span class="icon">🪙</span>
-          <span id="coins-text">0</span>
+          <span id="coins-text">50</span>
         </div>
         <div class="stat-badge" style="color: #ef4444;">
           <span class="icon">💀</span>
           <span id="kills-text">0</span>
         </div>
+
+        <button class="btn-shop-open" onclick="toggleCoinShop()">
+          🛒 TIENDA DE ARMAMENTO
+        </button>
+
         <button id="btn-next-wave" class="btn-wave" onclick="triggerNextWave()">
           ⚡ INICIAR OLEADA <span id="wave-num-btn">1</span>
         </button>
@@ -546,6 +682,18 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- COIN ARMAMENT SHOP MODAL -->
+  <div id="shop-modal">
+    <div class="shop-header">
+      <div class="shop-title">🛒 TIENDA DE ARMAMENTO Y TECNOLOGÍA</div>
+      <button class="btn-close-shop" onclick="toggleCoinShop()">✕</button>
+    </div>
+
+    <div id="shop-grid-container" class="shop-grid">
+      <!-- Dynamic shop cards rendered here -->
+    </div>
   </div>
 
   <!-- Roguelite Perk Modal -->
