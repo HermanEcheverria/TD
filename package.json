@@ -1,0 +1,13 @@
+{
+  "name": "roguelite-tower-defense-br",
+  "version": "1.0.0",
+  "description": "Multiplayer Real-time Roguelite Battle Royale Tower Defense",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
