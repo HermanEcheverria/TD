@@ -86,12 +86,12 @@ class MainScene extends Phaser.Scene {
       osc.stop(now + 0.3);
     } else if (type === 'buy') {
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(300, now);
-      osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+      osc.frequency.setValueAtTime(350, now);
+      osc.frequency.exponentialRampToValueAtTime(700, now + 0.18);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
       osc.start(now);
-      osc.stop(now + 0.15);
+      osc.stop(now + 0.18);
     } else if (type === 'explosion') {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(120, now);
@@ -266,9 +266,9 @@ class MainScene extends Phaser.Scene {
         }
       }
 
-      // Refresh shop card affordability state if shop modal is open
+      // Non-destructive shop affordability update (prevents DOM destruction & button click bugs!)
       if (document.getElementById('shop-modal').style.display === 'flex') {
-        this.renderShopCards(localPlayer);
+        this.updateShopAffordability(localPlayer);
       }
     }
 
@@ -302,7 +302,7 @@ class MainScene extends Phaser.Scene {
       const tContainer = this.add.container(player.x, player.y);
       const g = this.add.graphics();
 
-      // Outer Shield Barrier Aura if active
+      // Outer Shield Barrier Aura
       if (player.shieldHp > 0) {
         g.lineStyle(4, 0x38bdf8, 0.85);
         g.fillStyle(0x38bdf8, 0.15);
@@ -411,7 +411,6 @@ class MainScene extends Phaser.Scene {
       this.fxGraphics.fillStyle(fxColor, 0.8);
 
       if (fx.radius) {
-        // Splash Area Explosion Effect
         this.fxGraphics.lineStyle(3, 0xf97316, 0.9);
         this.fxGraphics.fillStyle(0xf97316, 0.3);
         this.fxGraphics.fillCircle(fx.x, fx.y, fx.radius);
@@ -454,6 +453,25 @@ class MainScene extends Phaser.Scene {
     });
   }
 
+  // Non-destructive update for shop buttons (prevents element recreation on 30 FPS tick!)
+  updateShopAffordability(localPlayer) {
+    if (!this.shopItems || !localPlayer) return;
+    Object.keys(this.shopItems).forEach(itemId => {
+      const btn = document.getElementById(`btn-buy-${itemId}`);
+      const lvlTag = document.getElementById(`level-tag-${itemId}`);
+      const item = this.shopItems[itemId];
+      if (btn && item) {
+        const level = (localPlayer.shopPurchases) ? (localPlayer.shopPurchases[itemId] || 0) : 0;
+        const cost = Math.round(item.baseCost * Math.pow(1.35, level));
+        const canAfford = localPlayer.coins >= cost;
+        btn.disabled = !canAfford;
+        btn.innerHTML = `${cost} 🪙`;
+        if (lvlTag) lvlTag.innerText = `NIVEL ${level}`;
+      }
+    });
+  }
+
+  // Full DOM construction for shop cards (only called on modal open or purchase success)
   renderShopCards(localPlayer) {
     const container = document.getElementById('shop-grid-container');
     if (!container || !this.shopItems) return;
@@ -479,8 +497,8 @@ class MainScene extends Phaser.Scene {
           </div>
         </div>
         <div class="shop-card-bottom">
-          <div class="shop-level-tag">NIVEL ${level}</div>
-          <button class="btn-buy" ${canAfford ? '' : 'disabled'} onclick="buyShopItem('${itemId}')">
+          <div class="shop-level-tag" id="level-tag-${itemId}">NIVEL ${level}</div>
+          <button id="btn-buy-${itemId}" class="btn-buy" ${canAfford ? '' : 'disabled'} onclick="buyShopItem('${itemId}')">
             ${cost} 🪙
           </button>
         </div>
