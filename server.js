@@ -28,9 +28,9 @@ const COLOR_PALETTE = [
 
 // Available Roguelite Upgrades
 const UPGRADE_POOL = [
-  { id: 'damage', title: 'Fuerza Destructiva', desc: '+30% Daño de Ataque', icon: '⚔️' },
-  { id: 'fireRate', title: 'Disparo Rápido', desc: '+25% Velocidad de Disparo', icon: '⚡' },
-  { id: 'maxHp', title: 'Fortaleza Blindada', desc: '+60 Max HP y +100 Reparación', icon: '🛡️' },
+  { id: 'damage', title: 'Fuerza Destructiva', desc: '+35% Daño de Ataque', icon: '⚔️' },
+  { id: 'fireRate', title: 'Disparo Rápido', desc: '+30% Velocidad de Disparo', icon: '⚡' },
+  { id: 'maxHp', title: 'Fortaleza Blindada', desc: '+80 Max HP y +120 Reparación', icon: '🛡️' },
   { id: 'attackRange', title: 'Alcance Extendido', desc: '+35% Rango de Ataque (PVE/PVP)', icon: '🎯' },
   { id: 'visionRange', title: 'Torre de Radar', desc: '+40% Rango de Visión', icon: '👁️' }
 ];
@@ -43,64 +43,58 @@ let hitEffects = [];
 let zombieIdCounter = 1;
 let projectileIdCounter = 1;
 
-let wave = 1;
-let waveTimer = 0;
-const WAVE_INTERVAL = 20000; // 20 seconds per wave
 let lastTickTime = Date.now();
-
-// Helper functions
-function getRandomSpawnPosition(playerCount) {
-  const angle = (playerCount * (Math.PI * 2 / 8)) + (Math.random() * 0.4 - 0.2);
-  const radius = 600 + Math.random() * 100;
-  const x = Math.max(100, Math.min(MAP_SIZE - 100, MAP_SIZE / 2 + Math.cos(angle) * radius));
-  const y = Math.max(100, Math.min(MAP_SIZE - 100, MAP_SIZE / 2 + Math.sin(angle) * radius));
-  return { x: Math.round(x), y: Math.round(y) };
-}
 
 function getRandomPerks() {
   const shuffled = [...UPGRADE_POOL].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, 3);
 }
 
+function clearZombiesForPlayer(playerId) {
+  Object.keys(zombies).forEach(zId => {
+    if (zombies[zId].targetPlayerId === playerId) {
+      delete zombies[zId];
+    }
+  });
+}
+
 function spawnZombiesForPlayer(player) {
   if (!player.alive) return;
-  
-  // Balanced zombie count per wave
-  const count = wave === 1 ? 3 : (wave === 2 ? 4 : Math.min(15, Math.floor(3 + wave * 1.5)));
+
+  const currentWave = player.wave;
+  // Controlled zombies count per wave
+  const count = currentWave === 1 ? 3 : (currentWave === 2 ? 4 : Math.min(14, Math.floor(3 + currentWave * 1.4)));
   
   for (let i = 0; i < count; i++) {
-    // Distribute angles evenly around tower with slight randomness
-    const angle = ((i * (Math.PI * 2 / count)) + (Math.random() * 0.4 - 0.2));
-    const distance = player.visionRange + 180 + Math.random() * 150;
-    const spawnX = Math.max(50, Math.min(MAP_SIZE - 50, player.x + Math.cos(angle) * distance));
-    const spawnY = Math.max(50, Math.min(MAP_SIZE - 50, player.y + Math.sin(angle) * distance));
+    const angle = ((i * (Math.PI * 2 / count)) + (Math.random() * 0.3 - 0.15));
+    const distance = player.visionRange + 180 + Math.random() * 120;
+    const spawnX = Math.max(80, Math.min(MAP_SIZE - 80, player.x + Math.cos(angle) * distance));
+    const spawnY = Math.max(80, Math.min(MAP_SIZE - 80, player.y + Math.sin(angle) * distance));
     
-    // Zombie variants based on wave & random roll
     const typeRoll = Math.random();
     let type = 'normal';
-    let hp = 25 + wave * 12; // Wave 1 HP = 37 (Player damage = 40 => 1-shot kill!)
-    let speed = 45 + Math.random() * 8; // Slower speed so player can shoot them down easily
-    let damage = 6;
+    let hp = 20 + currentWave * 10; // Wave 1 HP = 30 (Player damage = 45 => 1-shot kill!)
+    let speed = 40 + Math.random() * 8; // Slower speed for clear player control
+    let damage = 5;
     let rewardXp = 25;
     let rewardCoins = 10;
     let radius = 14;
     let color = '#7BED9F';
 
-    // Fast and Tank zombies only spawn on wave >= 2 or higher
-    if (wave >= 2 && typeRoll > 0.70 && typeRoll <= 0.90) {
+    if (currentWave >= 2 && typeRoll > 0.70 && typeRoll <= 0.90) {
       type = 'fast';
-      hp = 20 + wave * 8;
-      speed = 85 + Math.random() * 10;
+      hp = 18 + currentWave * 8;
+      speed = 75 + Math.random() * 10;
       damage = 4;
       rewardXp = 20;
       rewardCoins = 8;
       radius = 11;
       color = '#ECCC68';
-    } else if (wave >= 2 && typeRoll > 0.90) {
+    } else if (currentWave >= 2 && typeRoll > 0.90) {
       type = 'tank';
-      hp = 70 + wave * 25;
-      speed = 35 + Math.random() * 5;
-      damage = 15;
+      hp = 60 + currentWave * 20;
+      speed = 30 + Math.random() * 5;
+      damage = 12;
       rewardXp = 50;
       rewardCoins = 20;
       radius = 18;
@@ -125,53 +119,74 @@ function spawnZombiesForPlayer(player) {
       lastAttackTime: 0
     };
   }
+
+  player.waveActive = true;
 }
 
 // Socket Connection Handling
 io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
 
-  const activePlayerCount = Object.keys(players).length;
-  const spawn = getRandomSpawnPosition(activePlayerCount);
-  const color = COLOR_PALETTE[activePlayerCount % COLOR_PALETTE.length];
+  // Send map initial info
+  socket.emit('connected', { mapSize: MAP_SIZE, existingPlayers: players });
 
-  // Initialize new player tower state (Buffed starting stats for smoother early game)
-  players[socket.id] = {
-    id: socket.id,
-    name: `Torre ${socket.id.substring(0, 4)}`,
-    x: spawn.x,
-    y: spawn.y,
-    color: color,
-    hp: 300,
-    maxHp: 300,
-    level: 1,
-    xp: 0,
-    xpToNextLevel: 50, // Requires only 2 zombie kills for the 1st Roguelite level up!
-    coins: 0,
-    kills: 0,
-    damage: 40,
-    fireRate: 1.8, // Fast initial shooting (1 shot every ~550ms)
-    attackRange: 320,
-    visionRange: 480,
-    alive: true,
-    lastShotTime: 0,
-    upgradePending: false,
-    upgradesCount: 0
-  };
+  // Player places tower and joins
+  socket.on('join_game', (data) => {
+    const activePlayerCount = Object.keys(players).length;
+    const color = COLOR_PALETTE[activePlayerCount % COLOR_PALETTE.length];
 
-  // Notify new player of init data
-  socket.emit('init_game', {
-    playerId: socket.id,
-    mapSize: MAP_SIZE,
-    player: players[socket.id]
+    // Validate spawn coordinates
+    const posX = Math.max(100, Math.min(MAP_SIZE - 100, data.x || 1000));
+    const posY = Math.max(100, Math.min(MAP_SIZE - 100, data.y || 1000));
+    const playerName = (data.name && data.name.trim().length > 0) ? data.name.trim().substring(0, 12) : `Torre ${socket.id.substring(0, 4)}`;
+
+    players[socket.id] = {
+      id: socket.id,
+      name: playerName,
+      x: posX,
+      y: posY,
+      color: color,
+      hp: 350,
+      maxHp: 350,
+      level: 1,
+      xp: 0,
+      xpToNextLevel: 50,
+      coins: 0,
+      kills: 0,
+      damage: 45,
+      fireRate: 2.0, // 2 shots per second
+      attackRange: 330,
+      visionRange: 500,
+      alive: true,
+      lastShotTime: 0,
+      upgradePending: false,
+      upgradesCount: 0,
+      wave: 1,
+      waveActive: false
+    };
+
+    socket.emit('init_game', {
+      playerId: socket.id,
+      mapSize: MAP_SIZE,
+      player: players[socket.id]
+    });
   });
 
-  // Spawn initial wave after a 3-second grace period
-  setTimeout(() => {
-    if (players[socket.id]) {
-      spawnZombiesForPlayer(players[socket.id]);
+  // Manual Wave Trigger by player
+  socket.on('start_next_wave', () => {
+    const player = players[socket.id];
+    if (!player || !player.alive) return;
+
+    // Check if player has no active zombies left
+    const playerZombies = Object.values(zombies).filter(z => z.targetPlayerId === player.id);
+    if (playerZombies.length === 0) {
+      if (player.waveActive) {
+        player.wave++;
+      }
+      spawnZombiesForPlayer(player);
+      socket.emit('wave_started', { wave: player.wave });
     }
-  }, 3000);
+  });
 
   // Handle Roguelite Upgrade selection
   socket.on('choose_upgrade', (perkId) => {
@@ -180,14 +195,14 @@ io.on('connection', (socket) => {
 
     switch (perkId) {
       case 'damage':
-        player.damage = Math.round(player.damage * 1.3);
+        player.damage = Math.round(player.damage * 1.35);
         break;
       case 'fireRate':
-        player.fireRate = parseFloat((player.fireRate * 1.25).toFixed(2));
+        player.fireRate = parseFloat((player.fireRate * 1.30).toFixed(2));
         break;
       case 'maxHp':
-        player.maxHp += 60;
-        player.hp = Math.min(player.maxHp, player.hp + 100);
+        player.maxHp += 80;
+        player.hp = Math.min(player.maxHp, player.hp + 120);
         break;
       case 'attackRange':
         player.attackRange = Math.round(player.attackRange * 1.35);
@@ -200,47 +215,20 @@ io.on('connection', (socket) => {
     player.upgradesCount++;
     player.upgradePending = false;
 
-    // Check if player accumulated enough XP for another level immediately
     checkLevelUp(player, socket);
     socket.emit('upgrade_applied', { player });
   });
 
-  // Respawn / Rejoin request
+  // Respawn request -> Clears zombies and puts back into placement mode
   socket.on('request_respawn', () => {
-    const activeCount = Object.keys(players).length;
-    const newSpawn = getRandomSpawnPosition(activeCount);
-    players[socket.id] = {
-      id: socket.id,
-      name: `Torre ${socket.id.substring(0, 4)}`,
-      x: newSpawn.x,
-      y: newSpawn.y,
-      color: players[socket.id] ? players[socket.id].color : COLOR_PALETTE[activeCount % COLOR_PALETTE.length],
-      hp: 200,
-      maxHp: 200,
-      level: 1,
-      xp: 0,
-      xpToNextLevel: 100,
-      coins: 0,
-      kills: 0,
-      damage: 30,
-      fireRate: 1.2,
-      attackRange: 260,
-      visionRange: 450,
-      alive: true,
-      lastShotTime: 0,
-      upgradePending: false,
-      upgradesCount: 0
-    };
-    socket.emit('init_game', {
-      playerId: socket.id,
-      mapSize: MAP_SIZE,
-      player: players[socket.id]
-    });
-    spawnZombiesForPlayer(players[socket.id]);
+    clearZombiesForPlayer(socket.id);
+    delete players[socket.id];
+    socket.emit('reset_to_start');
   });
 
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
+    clearZombiesForPlayer(socket.id);
     delete players[socket.id];
   });
 });
@@ -249,7 +237,7 @@ function checkLevelUp(player, socket) {
   if (player.xp >= player.xpToNextLevel && !player.upgradePending) {
     player.level++;
     player.xp -= player.xpToNextLevel;
-    player.xpToNextLevel = Math.round(player.xpToNextLevel * 1.45);
+    player.xpToNextLevel = Math.round(player.xpToNextLevel * 1.4);
     player.upgradePending = true;
 
     const perkChoices = getRandomPerks();
@@ -277,29 +265,17 @@ setInterval(() => {
   const dt = (now - lastTickTime) / 1000;
   lastTickTime = now;
 
-  // 1. WAVE TIMER & ZOMBIE SPONING
-  waveTimer += dt * 1000;
-  if (waveTimer >= WAVE_INTERVAL) {
-    waveTimer = 0;
-    wave++;
-    io.emit('wave_start', { wave });
-    Object.values(players).forEach(p => {
-      if (p.alive) spawnZombiesForPlayer(p);
-    });
-  }
-
-  // Passive Tower HP Regeneration (+3 HP/sec)
+  // Passive Tower HP Regeneration (+4 HP/sec)
   Object.values(players).forEach(p => {
     if (p.alive && p.hp < p.maxHp) {
-      p.hp = Math.min(p.maxHp, Math.round(p.hp + 3 * dt));
+      p.hp = Math.min(p.maxHp, Math.round(p.hp + 4 * dt));
     }
   });
 
-  // 2. ZOMBIE AI & MOVEMENT
+  // ZOMBIE AI & MOVEMENT
   const alivePlayerIds = Object.keys(players).filter(id => players[id].alive);
   
   Object.values(zombies).forEach(zombie => {
-    // Find closest alive player tower if current target is dead or missing
     let targetPlayer = players[zombie.targetPlayerId];
     if (!targetPlayer || !targetPlayer.alive) {
       let minDist = Infinity;
@@ -325,7 +301,6 @@ setInterval(() => {
 
       const hitDist = TOWER_RADIUS + zombie.radius;
       if (dist <= hitDist) {
-        // Zombie attacks tower directly
         if (now - zombie.lastAttackTime >= 1000) {
           zombie.lastAttackTime = now;
           targetPlayer.hp = Math.max(0, targetPlayer.hp - zombie.damage);
@@ -338,12 +313,12 @@ setInterval(() => {
 
           if (targetPlayer.hp <= 0) {
             targetPlayer.alive = false;
+            clearZombiesForPlayer(targetPlayer.id); // CLEAR ZOMBIES ON DEATH!
             io.to(targetPlayer.id).emit('player_died', { killer: 'Zombis' });
             checkWinner();
           }
         }
       } else {
-        // Move zombie towards target tower
         const moveDist = zombie.speed * dt;
         zombie.x += (dx / dist) * moveDist;
         zombie.y += (dy / dist) * moveDist;
@@ -351,13 +326,12 @@ setInterval(() => {
     }
   });
 
-  // 3. TOWER TARGETING & SHOOTING (PVE & PVP)
+  // TOWER TARGETING & SHOOTING (PVE & PVP)
   Object.values(players).forEach(player => {
     if (!player.alive) return;
 
     const fireInterval = 1000 / player.fireRate;
     if (now - player.lastShotTime >= fireInterval) {
-      // Find candidate targets inside player.attackRange
       let bestTarget = null;
       let targetType = null;
       let minDist = player.attackRange;
@@ -372,7 +346,7 @@ setInterval(() => {
         }
       });
 
-      // Priority 2: If NO zombie in range, target enemy player towers inside attackRange (PVP!)
+      // Priority 2: Enemy player towers inside attackRange (PVP)
       if (!bestTarget) {
         Object.values(players).forEach(enemy => {
           if (enemy.id !== player.id && enemy.alive) {
@@ -386,7 +360,6 @@ setInterval(() => {
         });
       }
 
-      // Shoot projectile if target found
       if (bestTarget) {
         player.lastShotTime = now;
         const pId = `p_${projectileIdCounter++}`;
@@ -399,7 +372,7 @@ setInterval(() => {
           y: player.y,
           targetX: bestTarget.x,
           targetY: bestTarget.y,
-          speed: 550,
+          speed: 600,
           damage: player.damage,
           color: player.color
         });
@@ -407,11 +380,10 @@ setInterval(() => {
     }
   });
 
-  // 4. PROJECTILE MOVEMENT & HIT DETECT
+  // PROJECTILE MOVEMENT & HIT DETECT
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const proj = projectiles[i];
     
-    // Acquire current target position
     let targetObj = null;
     if (proj.targetType === 'zombie') {
       targetObj = zombies[proj.targetId];
@@ -419,7 +391,6 @@ setInterval(() => {
       targetObj = players[proj.targetId];
     }
 
-    // Update target coordinates if target still exists
     if (targetObj && (targetObj.alive === undefined || targetObj.alive)) {
       proj.targetX = targetObj.x;
       proj.targetY = targetObj.y;
@@ -431,7 +402,6 @@ setInterval(() => {
     const step = proj.speed * dt;
 
     if (dist <= step || dist < 15) {
-      // Hit impact!
       if (proj.targetType === 'zombie' && targetObj) {
         targetObj.hp -= proj.damage;
         hitEffects.push({ x: proj.targetX, y: proj.targetY, color: '#FFFFFF' });
@@ -450,6 +420,7 @@ setInterval(() => {
 
         if (targetObj.hp <= 0) {
           targetObj.alive = false;
+          clearZombiesForPlayer(targetObj.id); // CLEAR ZOMBIES ON DEATH!
           io.to(targetObj.id).emit('player_died', { killer: players[proj.ownerId] ? players[proj.ownerId].name : 'Jugador Enemigo' });
           checkWinner();
         }
@@ -457,23 +428,19 @@ setInterval(() => {
 
       projectiles.splice(i, 1);
     } else {
-      // Advance projectile forward
       proj.x += (dx / dist) * step;
       proj.y += (dy / dist) * step;
     }
   }
 
-  // Clear old hit effects
   const activeEffects = hitEffects.splice(0, hitEffects.length);
 
-  // Broadcast state snapshot to all connected clients
+  // Broadcast state snapshot
   io.emit('state_update', {
     players,
     zombies,
     projectiles,
-    hitEffects: activeEffects,
-    wave,
-    waveTimeRemaining: Math.max(0, Math.ceil((WAVE_INTERVAL - waveTimer) / 1000))
+    hitEffects: activeEffects
   });
 
 }, 33);

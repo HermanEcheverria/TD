@@ -13,9 +13,12 @@ class MainScene extends Phaser.Scene {
     this.socket = io();
     this.localPlayerId = null;
     this.mapSize = 2000;
+    this.isPlacementMode = false;
+    this.playerName = '';
 
     // Render containers for depth management
     this.bgGraphics = this.add.graphics();
+    this.previewGraphics = this.add.graphics();
     this.rangeGraphics = this.add.graphics();
     this.towersContainer = this.add.container(0, 0);
     this.zombiesContainer = this.add.container(0, 0);
@@ -24,14 +27,18 @@ class MainScene extends Phaser.Scene {
 
     // Map bounds
     this.cameras.main.setBounds(0, 0, this.mapSize, this.mapSize);
+    this.drawMapGrid();
 
-    // Audio Synthesizer (Web Audio API)
+    // Web Audio Synthesizer
     this.initAudio();
 
     // Setup Socket Listeners
     this.setupSocket();
 
-    // Resize listener
+    // Setup Pointer Events for Tower Placement & Camera Pan
+    this.setupInputListeners();
+
+    // Window resize
     window.addEventListener('resize', () => {
       this.scale.resize(window.innerWidth, window.innerHeight);
     });
@@ -96,12 +103,18 @@ class MainScene extends Phaser.Scene {
   }
 
   setupSocket() {
-    this.socket.on('init_game', (data) => {
-      this.localPlayerId = data.playerId;
+    this.socket.on('connected', (data) => {
       this.mapSize = data.mapSize;
       this.drawMapGrid();
+    });
 
-      // Camera smooth track initial position
+    this.socket.on('init_game', (data) => {
+      this.localPlayerId = data.playerId;
+      this.isPlacementMode = false;
+
+      document.getElementById('placement-banner').style.display = 'none';
+      document.getElementById('hud-overlay').style.display = 'flex';
+
       if (data.player) {
         this.cameras.main.centerOn(data.player.x, data.player.y);
       }
@@ -109,6 +122,15 @@ class MainScene extends Phaser.Scene {
 
     this.socket.on('state_update', (data) => {
       this.renderGameState(data);
+    });
+
+    this.socket.on('wave_started', (data) => {
+      const btn = document.getElementById('btn-next-wave');
+      if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.innerText = `OLEADA ${data.wave} EN CURSO...`;
+      }
     });
 
     this.socket.on('level_up_options', (data) => {
@@ -126,8 +148,57 @@ class MainScene extends Phaser.Scene {
     });
 
     this.socket.on('game_over', (data) => {
-      if (data.winner === (this.lastStatePlayers[this.localPlayerId] ? this.lastStatePlayers[this.localPlayerId].name : '')) {
-        this.showGameOverModal(true, '¡Eres el último sobreviviente!');
+      if (this.lastStatePlayers && this.lastStatePlayers[this.localPlayerId] && data.winner === this.lastStatePlayers[this.localPlayerId].name) {
+        this.showGameOverModal(true, '¡Eres el último superviviente!');
+      }
+    });
+
+    this.socket.on('reset_to_start', () => {
+      this.localPlayerId = null;
+      this.isPlacementMode = false;
+      document.getElementById('hud-overlay').style.display = 'none';
+      document.getElementById('start-screen-modal').style.display = 'flex';
+      this.cameras.main.centerOn(this.mapSize / 2, this.mapSize / 2);
+    });
+  }
+
+  setupInputListeners() {
+    // Placement click listener
+    this.input.on('pointerdown', (pointer) => {
+      if (this.isPlacementMode) {
+        const placeX = Math.round(pointer.worldX);
+        const placeY = Math.round(pointer.worldY);
+
+        this.socket.emit('join_game', {
+          name: this.playerName,
+          x: placeX,
+          y: placeY
+        });
+
+        this.previewGraphics.clear();
+      }
+    });
+
+    // Ghost tower preview on mousemove
+    this.input.on('pointermove', (pointer) => {
+      if (this.isPlacementMode) {
+        const g = this.previewGraphics;
+        g.clear();
+
+        const x = pointer.worldX;
+        const y = pointer.worldY;
+
+        // Attack Range Ghost Ring
+        g.lineStyle(2, 0x38bdf8, 0.6);
+        g.fillStyle(0x38bdf8, 0.1);
+        g.fillCircle(x, y, 330);
+        g.strokeCircle(x, y, 330);
+
+        // Tower Ghost Polygon
+        g.lineStyle(3, 0xfacc15, 0.9);
+        g.fillStyle(0xfacc15, 0.4);
+        g.fillCircle(x, y, 24);
+        g.strokeCircle(x, y, 24);
       }
     });
   }
@@ -136,11 +207,9 @@ class MainScene extends Phaser.Scene {
     const g = this.bgGraphics;
     g.clear();
 
-    // Dark Map Background
     g.fillStyle(0x0f172a, 1);
     g.fillRect(0, 0, this.mapSize, this.mapSize);
 
-    // Grid lines
     g.lineStyle(1, 0x1e293b, 0.6);
     const gridSize = 100;
     for (let x = 0; x <= this.mapSize; x += gridSize) {
@@ -150,7 +219,6 @@ class MainScene extends Phaser.Scene {
       g.lineBetween(0, y, this.mapSize, y);
     }
 
-    // Outer Boundary Glow
     g.lineStyle(6, 0xef4444, 0.8);
     g.strokeRect(0, 0, this.mapSize, this.mapSize);
   }
@@ -159,13 +227,13 @@ class MainScene extends Phaser.Scene {
     this.lastStatePlayers = state.players;
     const localPlayer = state.players[this.localPlayerId];
 
-    // Smooth Camera Following Local Player Tower
+    // Smooth Camera Following
     if (localPlayer && localPlayer.alive) {
       this.cameras.main.scrollX = Phaser.Math.Linear(this.cameras.main.scrollX, localPlayer.x - this.cameras.main.width / 2, 0.1);
       this.cameras.main.scrollY = Phaser.Math.Linear(this.cameras.main.scrollY, localPlayer.y - this.cameras.main.height / 2, 0.1);
 
-      // Update Local Player HUD
-      document.getElementById('hp-text').innerText = `${localPlayer.hp} / ${localPlayer.maxHp}`;
+      // HUD Stats Update
+      document.getElementById('hp-text').innerText = `${Math.round(localPlayer.hp)} / ${localPlayer.maxHp}`;
       const hpPct = Math.max(0, (localPlayer.hp / localPlayer.maxHp) * 100);
       document.getElementById('hp-fill').style.width = `${hpPct}%`;
 
@@ -176,48 +244,56 @@ class MainScene extends Phaser.Scene {
 
       document.getElementById('coins-text').innerText = localPlayer.coins;
       document.getElementById('kills-text').innerText = localPlayer.kills;
-      document.getElementById('wave-text').innerText = state.wave;
-      document.getElementById('wave-timer-text').innerText = state.waveTimeRemaining;
+      
+      // Update Wave Button State
+      const btn = document.getElementById('btn-next-wave');
+      const playerZombies = Object.values(state.zombies).filter(z => z.targetPlayerId === this.localPlayerId);
+      
+      if (btn) {
+        if (playerZombies.length === 0) {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+          btn.innerText = `⚡ INICIAR OLEADA ${localPlayer.waveActive ? localPlayer.wave + 1 : localPlayer.wave}`;
+        } else {
+          btn.disabled = true;
+          btn.style.opacity = '0.5';
+          btn.innerText = `OLEADA ${localPlayer.wave} (${playerZombies.length} Zombis restantes)`;
+        }
+      }
     }
 
-    // Update Leaderboard
     this.updateLeaderboard(state.players);
 
-    // Clear graphics for frame
     this.rangeGraphics.clear();
     this.projectilesGraphics.clear();
     this.fxGraphics.clear();
     this.towersContainer.removeAll(true);
     this.zombiesContainer.removeAll(true);
 
-    // 1. RENDER RANGES FOR LOCAL PLAYER
+    // RENDER RANGES FOR LOCAL PLAYER
     if (localPlayer && localPlayer.alive) {
       const colorNum = parseInt(localPlayer.color.replace('#', '0x'), 16);
 
-      // Vision Range Circle (Subtle Fog Reveal Area)
       this.rangeGraphics.lineStyle(2, 0xffffff, 0.15);
       this.rangeGraphics.strokeCircle(localPlayer.x, localPlayer.y, localPlayer.visionRange);
 
-      // Attack Range Circle (Dynamic indicator)
       this.rangeGraphics.lineStyle(2, colorNum, 0.4);
       this.rangeGraphics.fillStyle(colorNum, 0.05);
       this.rangeGraphics.fillCircle(localPlayer.x, localPlayer.y, localPlayer.attackRange);
       this.rangeGraphics.strokeCircle(localPlayer.x, localPlayer.y, localPlayer.attackRange);
     }
 
-    // 2. RENDER PLAYERS & TOWERS
+    // RENDER PLAYERS & TOWERS
     Object.values(state.players).forEach(player => {
       if (!player.alive) return;
 
       const pColor = parseInt(player.color.replace('#', '0x'), 16);
       const isLocal = player.id === this.localPlayerId;
 
-      // Base Tower Container
       const tContainer = this.add.container(player.x, player.y);
-
       const g = this.add.graphics();
 
-      // Outer Pulsing Glow Polygon (Octagon)
+      // Outer Octagon Fort
       g.lineStyle(3, pColor, 0.9);
       g.fillStyle(pColor, 0.25);
 
@@ -237,7 +313,7 @@ class MainScene extends Phaser.Scene {
       g.lineStyle(2, pColor, 1);
       g.strokeCircle(0, 0, 20);
 
-      // Turret Barrel (Pointed at nearest target or default)
+      // Turret Barrel
       g.fillStyle(pColor, 1);
       g.fillRect(-4, -22, 8, 16);
 
@@ -270,7 +346,7 @@ class MainScene extends Phaser.Scene {
       this.towersContainer.add(tContainer);
     });
 
-    // 3. RENDER ZOMBIES
+    // RENDER ZOMBIES
     Object.values(state.zombies).forEach(zombie => {
       const zColor = parseInt(zombie.color.replace('#', '0x'), 16);
 
@@ -278,18 +354,15 @@ class MainScene extends Phaser.Scene {
       zGraphics.x = zombie.x;
       zGraphics.y = zombie.y;
 
-      // Zombie Body
       zGraphics.fillStyle(zColor, 0.9);
       zGraphics.lineStyle(2, 0x000000, 0.8);
       zGraphics.fillCircle(0, 0, zombie.radius);
       zGraphics.strokeCircle(0, 0, zombie.radius);
 
-      // Zombie Eyes
       zGraphics.fillStyle(0xff0000, 1);
       zGraphics.fillCircle(-4, -3, 2.5);
       zGraphics.fillCircle(4, -3, 2.5);
 
-      // Mini HP bar
       const hpPct = Math.max(0, zombie.hp / zombie.maxHp);
       zGraphics.fillStyle(0x000000, 0.6);
       zGraphics.fillRect(-12, -zombie.radius - 8, 24, 4);
@@ -299,19 +372,18 @@ class MainScene extends Phaser.Scene {
       this.zombiesContainer.add(zGraphics);
     });
 
-    // 4. RENDER PROJECTILES
+    // RENDER PROJECTILES
     state.projectiles.forEach(proj => {
       const projColor = parseInt(proj.color.replace('#', '0x'), 16);
       
       this.projectilesGraphics.fillStyle(projColor, 1);
       this.projectilesGraphics.fillCircle(proj.x, proj.y, 6);
 
-      // Inner glowing core
       this.projectilesGraphics.fillStyle(0xffffff, 0.9);
       this.projectilesGraphics.fillCircle(proj.x, proj.y, 3);
     });
 
-    // 5. RENDER HIT EFFECTS
+    // RENDER HIT EFFECTS
     state.hitEffects.forEach(fx => {
       const fxColor = parseInt(fx.color.replace('#', '0x'), 16);
       this.fxGraphics.fillStyle(fxColor, 0.8);
@@ -328,6 +400,7 @@ class MainScene extends Phaser.Scene {
 
   updateLeaderboard(players) {
     const lbContainer = document.getElementById('lb-list');
+    if (!lbContainer) return;
     lbContainer.innerHTML = '';
 
     const playerList = Object.values(players).sort((a, b) => b.level - a.level || b.kills - a.kills);
@@ -385,18 +458,41 @@ class MainScene extends Phaser.Scene {
     if (isVictory) {
       card.className = 'go-card victory';
       title.innerText = '¡VICTORIA REAL!';
-      sub.innerText = cause || '¡Has destruido a todos los rivales y dominado la mapa!';
+      sub.innerText = cause || '¡Has destruido a todos los rivales!';
     } else {
       card.className = 'go-card';
       title.innerText = '¡TORRE DESTRUIDA!';
-      sub.innerText = `Causa de destrucción: ${cause}`;
+      sub.innerText = `Causa: ${cause}`;
     }
 
     modal.style.display = 'flex';
   }
 }
 
-// Global Respawn Helper Function for UI Button
+// Global Start & Wave Helpers
+function enterPlacementMode() {
+  const nameInput = document.getElementById('player-name-input');
+  const name = nameInput.value.trim();
+
+  document.getElementById('start-screen-modal').style.display = 'none';
+  document.getElementById('placement-banner').style.display = 'block';
+
+  if (window.gameInstance && window.gameInstance.scene.scenes[0]) {
+    const scene = window.gameInstance.scene.scenes[0];
+    scene.playerName = name;
+    scene.isPlacementMode = true;
+  }
+}
+
+function triggerNextWave() {
+  if (window.gameInstance && window.gameInstance.scene.scenes[0]) {
+    const scene = window.gameInstance.scene.scenes[0];
+    if (scene.socket) {
+      scene.socket.emit('start_next_wave');
+    }
+  }
+}
+
 function respawnGame() {
   document.getElementById('gameover-modal').style.display = 'none';
   if (window.gameInstance && window.gameInstance.scene.scenes[0]) {
