@@ -1,4 +1,4 @@
-// Client-side Phaser 3 + Socket.io Game Controller (Enhanced Dynamic Animations)
+// Client-side Phaser 3 + Socket.io Game Controller (Enhanced Dynamic Animations & Procedural Zombie Monsters)
 
 class MainScene extends Phaser.Scene {
   constructor() {
@@ -17,7 +17,6 @@ class MainScene extends Phaser.Scene {
     this.playerName = '';
     this.shopItems = {};
 
-    // Animated Background Ambient Dust Particles
     this.bgParticles = [];
     for (let i = 0; i < 60; i++) {
       this.bgParticles.push({
@@ -30,13 +29,9 @@ class MainScene extends Phaser.Scene {
       });
     }
 
-    // Floating Damage Text Array
     this.floatingTexts = [];
-
-    // Smooth turret angle interpolations cache
     this.turretAngles = {};
 
-    // Render containers for depth management
     this.bgGraphics = this.add.graphics();
     this.previewGraphics = this.add.graphics();
     this.rangeGraphics = this.add.graphics();
@@ -252,7 +247,6 @@ class MainScene extends Phaser.Scene {
     const g = this.bgGraphics;
     g.clear();
 
-    // Dark Cyber Grid Background
     g.fillStyle(0x0a0d17, 1);
     g.fillRect(0, 0, this.mapSize, this.mapSize);
 
@@ -265,7 +259,6 @@ class MainScene extends Phaser.Scene {
       g.lineBetween(0, y, this.mapSize, y);
     }
 
-    // Animated Ambient Starfield / Cyber Dust
     const dt = 0.016;
     this.bgParticles.forEach(p => {
       p.x = (p.x + p.speedX * dt + this.mapSize) % this.mapSize;
@@ -276,7 +269,6 @@ class MainScene extends Phaser.Scene {
       g.fillCircle(p.x, p.y, p.radius);
     });
 
-    // Outer Boundary Pulsing Glow
     const borderGlow = 0.6 + Math.sin(time * 0.003) * 0.2;
     g.lineStyle(8, 0xef4444, borderGlow);
     g.strokeRect(0, 0, this.mapSize, this.mapSize);
@@ -289,7 +281,6 @@ class MainScene extends Phaser.Scene {
     this.lastStatePlayers = state.players;
     const localPlayer = state.players[this.localPlayerId];
 
-    // Smooth Camera Following
     if (localPlayer && localPlayer.alive) {
       this.cameras.main.scrollX = Phaser.Math.Linear(this.cameras.main.scrollX, localPlayer.x - this.cameras.main.width / 2, 0.1);
       this.cameras.main.scrollY = Phaser.Math.Linear(this.cameras.main.scrollY, localPlayer.y - this.cameras.main.height / 2, 0.1);
@@ -337,15 +328,13 @@ class MainScene extends Phaser.Scene {
     this.towersContainer.removeAll(true);
     this.zombiesContainer.removeAll(true);
 
-    // 1. DYNAMIC ATTACK & VISION RANGE RINGS
+    // 1. DYNAMIC ATTACK & VISION RANGES
     if (localPlayer && localPlayer.alive) {
       const colorNum = parseInt(localPlayer.color.replace('#', '0x'), 16);
 
-      // Vision Range Circle
       this.rangeGraphics.lineStyle(2, 0xffffff, 0.15);
       this.rangeGraphics.strokeCircle(localPlayer.x, localPlayer.y, localPlayer.visionRange);
 
-      // Pulsing Attack Range Perimeter
       const rangePulse = Math.sin(time * 0.004) * 2;
       this.rangeGraphics.lineStyle(2.5, colorNum, 0.45);
       this.rangeGraphics.fillStyle(colorNum, 0.05 + Math.sin(time * 0.003) * 0.02);
@@ -353,7 +342,7 @@ class MainScene extends Phaser.Scene {
       this.rangeGraphics.strokeCircle(localPlayer.x, localPlayer.y, localPlayer.attackRange + rangePulse);
     }
 
-    // 2. ANIMATED TOWERS & ROTATING TURRET BARRELS
+    // 2. TOWERS & ROTATING TURRET BARRELS
     Object.values(state.players).forEach(player => {
       if (!player.alive) return;
 
@@ -363,7 +352,6 @@ class MainScene extends Phaser.Scene {
       const tContainer = this.add.container(player.x, player.y);
       const g = this.add.graphics();
 
-      // Pulsing Shield Barrier Aura
       if (player.shieldHp > 0) {
         const shieldPulse = 44 + Math.sin(time * 0.006) * 3;
         const shieldAlpha = 0.7 + Math.sin(time * 0.008) * 0.2;
@@ -373,7 +361,6 @@ class MainScene extends Phaser.Scene {
         g.strokeCircle(0, 0, shieldPulse);
       }
 
-      // Reactor Core Base Octagon Pulsing Animation
       const pulseRadius = 34 + Math.sin(time * 0.005 + player.x) * 1.5;
       g.lineStyle(3, pColor, 0.9);
       g.fillStyle(pColor, 0.25);
@@ -387,17 +374,14 @@ class MainScene extends Phaser.Scene {
       g.fillPoints(points, true);
       g.strokePoints(points, true);
 
-      // Inner Core Fort Shape
       g.fillStyle(0x0f172a, 1);
       g.fillCircle(0, 0, 20);
       g.lineStyle(2, pColor, 1);
       g.strokeCircle(0, 0, 20);
 
-      // ROTATING TURRET BARREL AIMING AT CLOSEST TARGET
       let aimAngle = this.turretAngles[player.id] || 0;
       let targetEntity = null;
 
-      // Find closest zombie or player to point barrel at
       let minD = player.attackRange;
       Object.values(state.zombies).forEach(z => {
         const d = Math.hypot(z.x - player.x, z.y - player.y);
@@ -418,7 +402,6 @@ class MainScene extends Phaser.Scene {
         this.turretAngles[player.id] = aimAngle;
       }
 
-      // Draw Rotating Turret Barrel Container
       const barrelG = this.add.graphics();
       barrelG.rotation = aimAngle + Math.PI / 2;
       barrelG.fillStyle(pColor, 1);
@@ -433,7 +416,6 @@ class MainScene extends Phaser.Scene {
 
       tContainer.add(g);
 
-      // HP Bar above tower
       const hpBarBg = this.add.graphics();
       hpBarBg.fillStyle(0x000000, 0.7);
       hpBarBg.fillRect(-30, -54, 60, 8);
@@ -445,7 +427,6 @@ class MainScene extends Phaser.Scene {
 
       tContainer.add(hpBarBg);
 
-      // Name & Level Tag
       const nameText = this.add.text(0, -68, `${player.name} [Lvl ${player.level}]`, {
         fontFamily: 'Outfit, sans-serif',
         fontSize: '12px',
@@ -460,46 +441,134 @@ class MainScene extends Phaser.Scene {
       this.towersContainer.add(tContainer);
     });
 
-    // 3. ANIMATED ZOMBIES (SQUASH & WOBBLE MOVEMENT)
+    // 3. DISTINCT PROCEDURAL MONSTER DESIGNS FOR EACH ZOMBIE VARIANT
     Object.values(state.zombies).forEach(zombie => {
       const zColor = parseInt(zombie.color.replace('#', '0x'), 16);
-
       const zGraphics = this.add.graphics();
-      
-      // Zombie Walking Bob/Wobble Animation
+
       const seed = zombie.x * 0.1;
-      const wobbleX = Math.sin(time * 0.012 + seed) * 2;
-      const wobbleY = Math.cos(time * 0.012 + seed) * 2;
+      const wobbleX = Math.sin(time * 0.014 + seed) * 2.5;
+      const wobbleY = Math.cos(time * 0.014 + seed) * 2.5;
 
       zGraphics.x = zombie.x + wobbleX;
       zGraphics.y = zombie.y + wobbleY;
 
-      zGraphics.fillStyle(zColor, 0.95);
-      zGraphics.lineStyle(2, 0x000000, 0.9);
-      zGraphics.fillCircle(0, 0, zombie.radius);
-      zGraphics.strokeCircle(0, 0, zombie.radius);
+      // Rotate zombie head towards target player tower
+      let faceAngle = 0;
+      if (state.players[zombie.targetPlayerId]) {
+        const tp = state.players[zombie.targetPlayerId];
+        faceAngle = Math.atan2(tp.y - zombie.y, tp.x - zombie.x);
+      }
+      zGraphics.rotation = faceAngle;
 
-      // Pulsing Glowing Red Eyes
-      const eyeGlow = 0.8 + Math.sin(time * 0.01 + seed) * 0.2;
-      zGraphics.fillStyle(0xff0000, eyeGlow);
-      zGraphics.fillCircle(-4, -3, 2.5);
-      zGraphics.fillCircle(4, -3, 2.5);
+      if (zombie.type === 'fast') {
+        // SLEEK CRAWLER (Neon Yellow Spikes + Tri-eye + Blade Legs)
+        zGraphics.fillStyle(0xfacc15, 0.95);
+        zGraphics.lineStyle(2, 0x000000, 1);
+        
+        // Blade Legs twitching
+        const legTwitch = Math.sin(time * 0.02 + seed) * 4;
+        zGraphics.lineBetween(-4, -10, -12, -16 + legTwitch);
+        zGraphics.lineBetween(-4, 10, -12, 16 - legTwitch);
+        zGraphics.lineBetween(4, -8, 12, -14 + legTwitch);
+        zGraphics.lineBetween(4, 8, 12, 14 - legTwitch);
 
-      // Mini HP bar
+        // Arrowhead Predator Shell
+        zGraphics.fillTriangle(14, 0, -10, -10, -10, 10);
+        zGraphics.strokeTriangle(14, 0, -10, -10, -10, 10);
+
+        // Triad Cyb-Eyes
+        zGraphics.fillStyle(0xff0055, 1);
+        zGraphics.fillCircle(4, 0, 2.5);
+        zGraphics.fillCircle(-2, -4, 2);
+        zGraphics.fillCircle(-2, 4, 2);
+
+      } else if (zombie.type === 'tank') {
+        // ARMORED BEHEMOTH (Dark Red Square + Shoulder Horns + Laser Visor Core)
+        zGraphics.fillStyle(0x991b1b, 1);
+        zGraphics.lineStyle(3, 0x000000, 1);
+        
+        // Heavy Shoulder Horn Spikes
+        zGraphics.fillTriangle(-2, -22, -12, -14, 6, -14);
+        zGraphics.fillTriangle(-2, 22, -12, 14, 6, 14);
+
+        // Armor Plate Shell
+        zGraphics.fillRoundedRect(-zombie.radius, -zombie.radius, zombie.radius * 2, zombie.radius * 2, 6);
+        zGraphics.strokeRoundedRect(-zombie.radius, -zombie.radius, zombie.radius * 2, zombie.radius * 2, 6);
+
+        // Pulsing Core Center
+        const coreGlow = 0.5 + Math.sin(time * 0.008) * 0.3;
+        zGraphics.fillStyle(0xf97316, coreGlow);
+        zGraphics.fillCircle(0, 0, 8);
+
+        // Glowing Red Laser Slit Visor
+        zGraphics.fillStyle(0xef4444, 1);
+        zGraphics.fillRect(6, -8, 4, 16);
+
+      } else if (zombie.type === 'boss') {
+        // MUTANT BOSS DEMON (Giant Purple Octagon + Gold Horns + 4 Red Eyes)
+        zGraphics.fillStyle(0x6b21a8, 0.95);
+        zGraphics.lineStyle(3, 0xfacc15, 0.9);
+
+        // Gold Demon Horns
+        zGraphics.fillTriangle(8, -20, 20, -28, 2, -12);
+        zGraphics.fillTriangle(8, 20, 20, 28, 2, 12);
+
+        // Main Boss Body
+        zGraphics.fillCircle(0, 0, zombie.radius);
+        zGraphics.strokeCircle(0, 0, zombie.radius);
+
+        // Inner Void Core
+        zGraphics.fillStyle(0x1e1b4b, 1);
+        zGraphics.fillCircle(0, 0, 12);
+
+        // 4 Glowing Eyes
+        zGraphics.fillStyle(0xff0000, 1);
+        zGraphics.fillCircle(8, -6, 3);
+        zGraphics.fillCircle(8, 6, 3);
+        zGraphics.fillCircle(0, -8, 2.5);
+        zGraphics.fillCircle(0, 8, 2.5);
+
+      } else {
+        // NORMAL MUTANT RUNNER (Organic Toxic Spikes + Fangs + Glowing Eyes)
+        zGraphics.fillStyle(zColor, 0.95);
+        zGraphics.lineStyle(2, 0x000000, 0.9);
+
+        // Back Spikes
+        const spikePulse = Math.sin(time * 0.01 + seed) * 2;
+        zGraphics.fillTriangle(-10, -10, -16 - spikePulse, -6, -6, -2);
+        zGraphics.fillTriangle(-10, 10, -16 - spikePulse, 6, -6, 2);
+
+        // Main Body
+        zGraphics.fillCircle(0, 0, zombie.radius);
+        zGraphics.strokeCircle(0, 0, zombie.radius);
+
+        // Sharp White Fangs
+        zGraphics.fillStyle(0xffffff, 1);
+        zGraphics.fillTriangle(zombie.radius - 2, -4, zombie.radius + 5, -2, zombie.radius - 2, 0);
+        zGraphics.fillTriangle(zombie.radius - 2, 0, zombie.radius + 5, 2, zombie.radius - 2, 4);
+
+        // Glowing Eyes
+        const eyeGlow = 0.8 + Math.sin(time * 0.01 + seed) * 0.2;
+        zGraphics.fillStyle(0xff0000, eyeGlow);
+        zGraphics.fillCircle(4, -4, 2.5);
+        zGraphics.fillCircle(4, 4, 2.5);
+      }
+
+      // Mini HP Bar above Zombie
       const hpPct = Math.max(0, zombie.hp / zombie.maxHp);
-      zGraphics.fillStyle(0x000000, 0.6);
-      zGraphics.fillRect(-12, -zombie.radius - 8, 24, 4);
-      zGraphics.fillStyle(0xef4444, 1);
-      zGraphics.fillRect(-12, -zombie.radius - 8, 24 * hpPct, 4);
+      zGraphics.fillStyle(0x000000, 0.7);
+      zGraphics.fillRect(-14, -zombie.radius - 12, 28, 5);
+      zGraphics.fillStyle(zombie.type === 'boss' ? 0xa855f7 : 0xef4444, 1);
+      zGraphics.fillRect(-13, -zombie.radius - 11, 26 * hpPct, 3);
 
       this.zombiesContainer.add(zGraphics);
     });
 
-    // 4. ANIMATED PROJECTILES WITH GLOWING LASER TRAILS
+    // 4. PROJECTILES WITH TRAIL LINES
     state.projectiles.forEach(proj => {
       const projColor = parseInt(proj.color.replace('#', '0x'), 16);
       
-      // Motion Trail Tail
       const angle = Math.atan2(proj.targetY - proj.y, proj.targetX - proj.x);
       const tailLen = 14;
       const tailX = proj.x - Math.cos(angle) * tailLen;
@@ -508,7 +577,6 @@ class MainScene extends Phaser.Scene {
       this.projectilesGraphics.lineStyle(4, projColor, 0.6);
       this.projectilesGraphics.lineBetween(proj.x, proj.y, tailX, tailY);
 
-      // Projectile Core Head
       this.projectilesGraphics.fillStyle(projColor, 1);
       this.projectilesGraphics.fillCircle(proj.x, proj.y, 6);
 
@@ -516,18 +584,16 @@ class MainScene extends Phaser.Scene {
       this.projectilesGraphics.fillCircle(proj.x, proj.y, 3);
     });
 
-    // 5. ANIMATED HIT & SPLASH IMPACT PARTICLES
+    // 5. HIT IMPACTS & FLOATING DAMAGE TEXT
     state.hitEffects.forEach(fx => {
       const fxColor = parseInt(fx.color.replace('#', '0x'), 16);
 
       if (fx.radius) {
-        // Dynamic Expanding Splash Shockwave
         this.fxGraphics.lineStyle(3, 0xf97316, 0.9);
         this.fxGraphics.fillStyle(0xf97316, 0.35);
         this.fxGraphics.fillCircle(fx.x, fx.y, fx.radius);
         this.fxGraphics.strokeCircle(fx.x, fx.y, fx.radius);
       } else {
-        // Starburst Sparks
         this.fxGraphics.fillStyle(fxColor, 0.9);
         for (let i = 0; i < 6; i++) {
           const ox = (Math.random() - 0.5) * 24;
@@ -535,7 +601,6 @@ class MainScene extends Phaser.Scene {
           this.fxGraphics.fillCircle(fx.x + ox, fx.y + oy, Math.random() * 4 + 1.5);
         }
 
-        // Spawn Floating Damage Popups!
         this.spawnFloatingText(fx.x, fx.y, '-35', fx.color === '#FF4757' ? '#ef4444' : '#facc15');
       }
 

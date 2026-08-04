@@ -81,7 +81,16 @@ function spawnZombiesForPlayer(player) {
     let radius = 14;
     let color = '#7BED9F';
 
-    if (currentWave >= 2 && typeRoll > 0.70 && typeRoll <= 0.90) {
+    if (currentWave >= 4 && typeRoll > 0.92) {
+      type = 'boss';
+      hp = 180 + currentWave * 45;
+      speed = 28 + Math.random() * 4;
+      damage = 25;
+      rewardXp = 120;
+      rewardCoins = 60;
+      radius = 26;
+      color = '#A855F7';
+    } else if (currentWave >= 2 && typeRoll > 0.70 && typeRoll <= 0.90) {
       type = 'fast';
       hp = 18 + currentWave * 8;
       speed = 75 + Math.random() * 10;
