@@ -1,4 +1,4 @@
-// Client-side Phaser 3 + Socket.io Game Controller (Enhanced Dynamic Animations & Procedural Zombie Monsters)
+// Client-side Phaser 3 + Socket.io Game Controller (Humanoid Top-Down Zombies with Outstretched Arms & Brain Wounds)
 
 class MainScene extends Phaser.Scene {
   constructor() {
@@ -441,19 +441,18 @@ class MainScene extends Phaser.Scene {
       this.towersContainer.add(tContainer);
     });
 
-    // 3. DISTINCT PROCEDURAL MONSTER DESIGNS FOR EACH ZOMBIE VARIANT
+    // 3. REAL TOP-DOWN HUMANOID ZOMBIES (Torso, Outstretched Reaching Arms, Head & Brain Wounds)
     Object.values(state.zombies).forEach(zombie => {
-      const zColor = parseInt(zombie.color.replace('#', '0x'), 16);
       const zGraphics = this.add.graphics();
 
       const seed = zombie.x * 0.1;
-      const wobbleX = Math.sin(time * 0.014 + seed) * 2.5;
-      const wobbleY = Math.cos(time * 0.014 + seed) * 2.5;
+      const wobbleX = Math.sin(time * 0.015 + seed) * 2.5;
+      const wobbleY = Math.cos(time * 0.015 + seed) * 2.5;
 
       zGraphics.x = zombie.x + wobbleX;
       zGraphics.y = zombie.y + wobbleY;
 
-      // Rotate zombie head towards target player tower
+      // Face rotation towards target player tower
       let faceAngle = 0;
       if (state.players[zombie.targetPlayerId]) {
         const tp = state.players[zombie.targetPlayerId];
@@ -461,106 +460,156 @@ class MainScene extends Phaser.Scene {
       }
       zGraphics.rotation = faceAngle;
 
+      const armSwing = Math.sin(time * 0.018 + seed) * 4;
+
       if (zombie.type === 'fast') {
-        // SLEEK CRAWLER (Neon Yellow Spikes + Tri-eye + Blade Legs)
-        zGraphics.fillStyle(0xfacc15, 0.95);
-        zGraphics.lineStyle(2, 0x000000, 1);
-        
-        // Blade Legs twitching
-        const legTwitch = Math.sin(time * 0.02 + seed) * 4;
-        zGraphics.lineBetween(-4, -10, -12, -16 + legTwitch);
-        zGraphics.lineBetween(-4, 10, -12, 16 - legTwitch);
-        zGraphics.lineBetween(4, -8, 12, -14 + legTwitch);
-        zGraphics.lineBetween(4, 8, 12, 14 - legTwitch);
+        // ⚡ FAST CRAWLER ZOMBIE (Sickly Pale Skin, Torn Red Clothes, Outstretched Agile Arms)
+        const skinColor = 0x86efac;
+        const shirtColor = 0x991b1b;
 
-        // Arrowhead Predator Shell
-        zGraphics.fillTriangle(14, 0, -10, -10, -10, 10);
-        zGraphics.strokeTriangle(14, 0, -10, -10, -10, 10);
+        zGraphics.fillStyle(shirtColor, 1);
+        zGraphics.lineStyle(1.5, 0x000000, 0.9);
+        zGraphics.fillRect(-8, -12, 10, 24);
+        zGraphics.strokeRect(-8, -12, 10, 24);
 
-        // Triad Cyb-Eyes
-        zGraphics.fillStyle(0xff0055, 1);
-        zGraphics.fillCircle(4, 0, 2.5);
-        zGraphics.fillCircle(-2, -4, 2);
-        zGraphics.fillCircle(-2, 4, 2);
+        zGraphics.fillStyle(skinColor, 1);
+        zGraphics.fillRect(-2, -12 + armSwing * 1.2, 18, 4);
+        zGraphics.strokeRect(-2, -12 + armSwing * 1.2, 18, 4);
 
-      } else if (zombie.type === 'tank') {
-        // ARMORED BEHEMOTH (Dark Red Square + Shoulder Horns + Laser Visor Core)
-        zGraphics.fillStyle(0x991b1b, 1);
-        zGraphics.lineStyle(3, 0x000000, 1);
-        
-        // Heavy Shoulder Horn Spikes
-        zGraphics.fillTriangle(-2, -22, -12, -14, 6, -14);
-        zGraphics.fillTriangle(-2, 22, -12, 14, 6, 14);
+        zGraphics.fillRect(-2, 8 - armSwing * 1.2, 18, 4);
+        zGraphics.strokeRect(-2, 8 - armSwing * 1.2, 18, 4);
 
-        // Armor Plate Shell
-        zGraphics.fillRoundedRect(-zombie.radius, -zombie.radius, zombie.radius * 2, zombie.radius * 2, 6);
-        zGraphics.strokeRoundedRect(-zombie.radius, -zombie.radius, zombie.radius * 2, zombie.radius * 2, 6);
+        zGraphics.fillCircle(16, -10 + armSwing * 1.2, 2.5);
+        zGraphics.fillCircle(16, 10 - armSwing * 1.2, 2.5);
 
-        // Pulsing Core Center
-        const coreGlow = 0.5 + Math.sin(time * 0.008) * 0.3;
-        zGraphics.fillStyle(0xf97316, coreGlow);
-        zGraphics.fillCircle(0, 0, 8);
+        zGraphics.fillCircle(0, 0, 10);
+        zGraphics.strokeCircle(0, 0, 10);
 
-        // Glowing Red Laser Slit Visor
-        zGraphics.fillStyle(0xef4444, 1);
-        zGraphics.fillRect(6, -8, 4, 16);
+        zGraphics.fillStyle(0xd90429, 0.9);
+        zGraphics.fillCircle(-4, -3, 3);
 
-      } else if (zombie.type === 'boss') {
-        // MUTANT BOSS DEMON (Giant Purple Octagon + Gold Horns + 4 Red Eyes)
-        zGraphics.fillStyle(0x6b21a8, 0.95);
-        zGraphics.lineStyle(3, 0xfacc15, 0.9);
-
-        // Gold Demon Horns
-        zGraphics.fillTriangle(8, -20, 20, -28, 2, -12);
-        zGraphics.fillTriangle(8, 20, 20, 28, 2, 12);
-
-        // Main Boss Body
-        zGraphics.fillCircle(0, 0, zombie.radius);
-        zGraphics.strokeCircle(0, 0, zombie.radius);
-
-        // Inner Void Core
-        zGraphics.fillStyle(0x1e1b4b, 1);
-        zGraphics.fillCircle(0, 0, 12);
-
-        // 4 Glowing Eyes
-        zGraphics.fillStyle(0xff0000, 1);
-        zGraphics.fillCircle(8, -6, 3);
-        zGraphics.fillCircle(8, 6, 3);
-        zGraphics.fillCircle(0, -8, 2.5);
-        zGraphics.fillCircle(0, 8, 2.5);
-
-      } else {
-        // NORMAL MUTANT RUNNER (Organic Toxic Spikes + Fangs + Glowing Eyes)
-        zGraphics.fillStyle(zColor, 0.95);
-        zGraphics.lineStyle(2, 0x000000, 0.9);
-
-        // Back Spikes
-        const spikePulse = Math.sin(time * 0.01 + seed) * 2;
-        zGraphics.fillTriangle(-10, -10, -16 - spikePulse, -6, -6, -2);
-        zGraphics.fillTriangle(-10, 10, -16 - spikePulse, 6, -6, 2);
-
-        // Main Body
-        zGraphics.fillCircle(0, 0, zombie.radius);
-        zGraphics.strokeCircle(0, 0, zombie.radius);
-
-        // Sharp White Fangs
-        zGraphics.fillStyle(0xffffff, 1);
-        zGraphics.fillTriangle(zombie.radius - 2, -4, zombie.radius + 5, -2, zombie.radius - 2, 0);
-        zGraphics.fillTriangle(zombie.radius - 2, 0, zombie.radius + 5, 2, zombie.radius - 2, 4);
-
-        // Glowing Eyes
-        const eyeGlow = 0.8 + Math.sin(time * 0.01 + seed) * 0.2;
-        zGraphics.fillStyle(0xff0000, eyeGlow);
+        zGraphics.fillStyle(0x000000, 1);
         zGraphics.fillCircle(4, -4, 2.5);
         zGraphics.fillCircle(4, 4, 2.5);
+        zGraphics.fillStyle(0xff0055, 1);
+        zGraphics.fillCircle(5, -4, 1.2);
+        zGraphics.fillCircle(5, 4, 1.2);
+
+      } else if (zombie.type === 'tank') {
+        // 💥 GIANT TANK ZOMBIE (Massive Broad Shoulders, Spiked Metal Pads, Heavy Arms)
+        const skinColor = 0x475569;
+        const armorColor = 0x1e293b;
+
+        zGraphics.fillStyle(armorColor, 1);
+        zGraphics.lineStyle(2, 0x000000, 1);
+        zGraphics.fillRoundedRect(-12, -18, 16, 36, 4);
+        zGraphics.strokeRoundedRect(-12, -18, 16, 36, 4);
+
+        zGraphics.fillStyle(0xef4444, 1);
+        zGraphics.fillTriangle(-6, -22, -14, -16, 2, -16);
+        zGraphics.fillTriangle(-6, 22, -14, 16, 2, 16);
+
+        zGraphics.fillStyle(skinColor, 1);
+        zGraphics.fillRect(-4, -16 + armSwing * 0.5, 22, 7);
+        zGraphics.strokeRect(-4, -16 + armSwing * 0.5, 22, 7);
+
+        zGraphics.fillRect(-4, 9 - armSwing * 0.5, 22, 7);
+        zGraphics.strokeRect(-4, 9 - armSwing * 0.5, 22, 7);
+
+        zGraphics.fillCircle(18, -12.5 + armSwing * 0.5, 4);
+        zGraphics.fillCircle(18, 12.5 - armSwing * 0.5, 4);
+
+        zGraphics.fillCircle(0, 0, 13);
+        zGraphics.strokeCircle(0, 0, 13);
+
+        zGraphics.fillStyle(0xf97316, 1);
+        zGraphics.fillRect(5, -7, 4, 14);
+
+      } else if (zombie.type === 'boss') {
+        // 💀 MUTANT BOSS ZOMBIE (Giant Hulking Mutant, Toxic Purple Skin, Massive Brain)
+        const skinColor = 0x581c87;
+        const brainColor = 0x22c55e;
+
+        zGraphics.fillStyle(0x1e1b4b, 1);
+        zGraphics.lineStyle(3, 0xfacc15, 0.9);
+        zGraphics.fillRoundedRect(-16, -24, 20, 48, 6);
+        zGraphics.strokeRoundedRect(-16, -24, 20, 48, 6);
+
+        zGraphics.fillStyle(skinColor, 1);
+        zGraphics.fillRect(-6, -22 + armSwing * 0.6, 28, 9);
+        zGraphics.strokeRect(-6, -22 + armSwing * 0.6, 28, 9);
+
+        zGraphics.fillRect(-6, 13 - armSwing * 0.6, 28, 9);
+        zGraphics.strokeRect(-6, 13 - armSwing * 0.6, 28, 9);
+
+        zGraphics.fillCircle(22, -17.5 + armSwing * 0.6, 5);
+        zGraphics.fillCircle(22, 17.5 - armSwing * 0.6, 5);
+
+        zGraphics.fillCircle(0, 0, 16);
+        zGraphics.strokeCircle(0, 0, 16);
+
+        zGraphics.fillStyle(brainColor, 0.95);
+        zGraphics.fillCircle(-4, 0, 8);
+
+        zGraphics.fillStyle(0xff0000, 1);
+        zGraphics.fillCircle(8, -6, 3.5);
+        zGraphics.fillCircle(8, 6, 3.5);
+        zGraphics.fillCircle(2, -9, 2.5);
+        zGraphics.fillCircle(2, 9, 2.5);
+
+      } else {
+        // 💚 STANDARD HUMANOID ZOMBIE (Decaying Green Skin, Torn Blue Shirt, Reaching Arms, Exposed Brain)
+        const skinColor = 0x2d6a4f;
+        const shirtColor = 0x1e293b;
+
+        // Tattered Shirt / Torso & Shoulders
+        zGraphics.fillStyle(shirtColor, 1);
+        zGraphics.lineStyle(1.5, 0x000000, 0.9);
+        zGraphics.fillRect(-8, -13, 11, 26);
+        zGraphics.strokeRect(-8, -13, 11, 26);
+
+        // Outstretched Decaying Zombie Arms
+        zGraphics.fillStyle(skinColor, 1);
+        zGraphics.fillRect(-2, -13 + armSwing, 17, 5);
+        zGraphics.strokeRect(-2, -13 + armSwing, 17, 5);
+
+        zGraphics.fillRect(-2, 8 - armSwing, 17, 5);
+        zGraphics.strokeRect(-2, 8 - armSwing, 17, 5);
+
+        // Zombie Hands / Clawed Fingers Reaching Out
+        zGraphics.fillCircle(15, -10.5 + armSwing, 3);
+        zGraphics.fillCircle(15, 10.5 - armSwing, 3);
+
+        // Zombie Head
+        zGraphics.fillCircle(0, 0, 11);
+        zGraphics.strokeCircle(0, 0, 11);
+
+        // Exposed Bloody Brain / Skull Wound
+        zGraphics.fillStyle(0x9e2a2b, 1);
+        zGraphics.fillCircle(-4, -4, 4.5);
+        zGraphics.fillStyle(0xd90429, 0.9);
+        zGraphics.fillCircle(-4, -4, 2.5);
+
+        // Sunken Hollow Eye Sockets + Glowing Infected Pupils
+        zGraphics.fillStyle(0x000000, 1);
+        zGraphics.fillCircle(4, -4, 3);
+        zGraphics.fillCircle(4, 4, 3);
+
+        zGraphics.fillStyle(0xeab308, 1);
+        zGraphics.fillCircle(5, -4, 1.5);
+        zGraphics.fillCircle(5, 4, 1.5);
+
+        // Blood drop on mouth
+        zGraphics.fillStyle(0xb7094c, 1);
+        zGraphics.fillCircle(9, 0, 2);
       }
 
       // Mini HP Bar above Zombie
       const hpPct = Math.max(0, zombie.hp / zombie.maxHp);
       zGraphics.fillStyle(0x000000, 0.7);
-      zGraphics.fillRect(-14, -zombie.radius - 12, 28, 5);
+      zGraphics.fillRect(-15, -zombie.radius - 14, 30, 5);
       zGraphics.fillStyle(zombie.type === 'boss' ? 0xa855f7 : 0xef4444, 1);
-      zGraphics.fillRect(-13, -zombie.radius - 11, 26 * hpPct, 3);
+      zGraphics.fillRect(-14, -zombie.radius - 13, 28 * hpPct, 3);
 
       this.zombiesContainer.add(zGraphics);
     });
